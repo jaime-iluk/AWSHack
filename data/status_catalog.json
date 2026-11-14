@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "statuses": [
+    {"code": "E01", "stage": 1, "critical": false, "es": "Su paciente fue registrado en urgencias y está en espera de valoración."},
+    {"code": "E02", "stage": 2, "critical": false, "es": "Su paciente ya está siendo atendido."},
+    {"code": "E03", "stage": 2, "critical": false, "es": "Su paciente está en estudios (laboratorio o imagen)."},
+    {"code": "E04", "stage": 3, "critical": false, "es": "Su paciente entró a quirófano o a un procedimiento."},
+    {"code": "E05", "stage": 3, "critical": false, "es": "Su paciente está en recuperación u observación."},
+    {"code": "E06", "stage": 4, "critical": false, "es": "Su paciente fue hospitalizado y ya tiene cama."},
+    {"code": "E07", "stage": null, "critical": true, "es": "El médico quiere hablar con usted. Por favor regrese a informes en los próximos 20 minutos."},
+    {"code": "E08", "stage": null, "critical": true, "es": "Se necesita algo de usted. Revise la lista de pendientes."},
+    {"code": "E09", "stage": null, "critical": false, "es": "Ya puede pasar un familiar a ver a su paciente."},
+    {"code": "E10", "stage": 5, "critical": false, "es": "Su paciente fue trasladado a otra área u hospital. Le diremos a dónde ir."},
+    {"code": "E11", "stage": 5, "critical": false, "es": "El alta de su paciente está en proceso."}
+  ],
+  "stages": [
+    {"stage": 1, "es": "Registro"},
+    {"stage": 2, "es": "En atención"},
+    {"stage": 3, "es": "Procedimiento"},
+    {"stage": 4, "es": "Hospitalizado"},
+    {"stage": 5, "es": "Salida"}
+  ],
+  "broadcasts": [
+    {"code": "B01", "es": "El informe médico de {area} será a las {hora} en {lugar}."},
+    {"code": "B02", "es": "Hay alta demanda en {area}. La espera puede ser mayor. Le avisaremos de cualquier cambio."}
+  ],
+  "pending_types": [
+    {"code": "P01", "es": "Traer documentos"},
+    {"code": "P02", "es": "Comprar medicamento o material"},
+    {"code": "P03", "es": "Conseguir donadores de sangre"},
+    {"code": "P04", "es": "Firmar un documento"}
+  ],
+  "derived": {
+    "rest_permission": "No hay nada pendiente para usted antes de las {hora}. Puede ir a comer o descansar; le avisaremos de cualquier cambio."
+  },
+  "notes": "Las traducciones a lenguas indígenas se validan con intérpretes humanos antes de usarse. Nunca traducir avisos al vuelo."
+}
