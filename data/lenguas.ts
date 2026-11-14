@@ -11,7 +11,7 @@ import { NAH_TEXT } from "./demo";
 export type LangId = "es" | "nah" | "yua" | "tzh" | "tzo" | "mix" | "zap" | "oto" | "hch" | "otra";
 
 export type TextKey =
-  | "listen" | "hoy" | "welcome" | "onbTitle" | "onbChoose" | "onbCard" | "priv1" | "priv2"
+  | "listen" | "hoy" | "welcome" | "onbTitle" | "onbChoose" | "onbCard" | "onbCardSub" | "priv1" | "priv2"
   | "path" | "coming" | "urgentTitle" | "rest" | "cerca" | "ayuda"
   | "E01" | "E02" | "E03" | "E04" | "E05" | "E06" | "E07" | "E08" | "E09" | "E10" | "E11" | "B01" | "P03";
 
@@ -25,6 +25,7 @@ export interface Lengua {
 
 const NAH: Lengua["text"] = {
   ...(NAH_TEXT as Partial<Record<TextKey, string>>),
+  onbCardSub: "Mitzmacaqueh ihcuac oquitlalihqueh mococoxqui. Noihqui hueli ticitaz in código.",
   priv1: "Zan timitzilhuizqueh tlen quitoa tepahtihcalli.",
   priv2: "Amo nican timitzilhuizqueh tlen quipia mococoxqui; yehhuatl tepahtiani mitzilhuiz.",
   cerca: "Nican ticittaz campa hueli ticochiz, titlacuaz ihuan ticohuaz pahtli, ahco tepahtihcalli.",
@@ -39,6 +40,7 @@ const YUA: Lengua["text"] = {
   onbTitle: "Yaan k-a'alik teech bix yaan a k'oja'an",
   onbChoose: "Yéey a t'aan",
   onbCard: "Ts'íibt le ba'ax yaan ti' a tarjetai'",
+  onbCardSub: "Ts'a'ab teech ka ts'íibta'ab a k'oja'an. Je'el xan u páajtal a xak'altik le código'.",
   priv1: "Chéen k-a'alik teech le ba'ax ku ya'alik le najil ts'aak yaajo'.",
   priv2: "Ma' k-a'alik teech u k'oja'anil; le ts'aak yaaj ku ya'alik teech.",
   path: "U bej a k'oja'an",
@@ -62,6 +64,7 @@ const TZH: Lengua["text"] = {
   onbTitle: "Ya kalbatik bin ut'il ay a jchamel",
   onbChoose: "T'ujbilan a k'op",
   onbCard: "Ts'ibuya te bin ay ta a tarjeta",
+  onbCardSub: "Ya'beyat k'alal la ts'ibuyot a jchamel. Ya xju' ya ak'el te código.",
   priv1: "Ja' nax ya kalbatik te bin ya yal te snail poxil.",
   priv2: "Ma' ya kalbatik te schamel; ja' ya yalbat te jpoxtawanej.",
   path: "Sbe a jchamel",
@@ -85,6 +88,7 @@ const TZO: Lengua["text"] = {
   onbTitle: "Ta jalbekutik k'u x-elan li ajchamele",
   onbChoose: "T'ujo li ak'ope",
   onbCard: "Ts'ibao li k'usi oy ta atarjetae",
+  onbCardSub: "Ak'bot k'alal la sts'ibaik li ajchamele. Xu' xtok xak'el li código.",
   priv1: "Ja' no'ox ta jalbekutik li k'usi ta xal li snail poxile.",
   priv2: "Mu jalbekutik li schamele; ja' ta xalbot li j-poxtavaneje.",
   path: "Sbe li ajchamele",
@@ -108,6 +112,7 @@ const MIX: Lengua["text"] = {
   onbTitle: "Ka'an ña'a xi'in yo'o naa ndiko'o na kue'e",
   onbChoose: "Kaxin tu'un ro'o",
   onbCard: "Tee ña ndiko'o nu tarjeta ro'o",
+  onbCardSub: "Ni sakuaa ro'o ña yo'o tiempu ni tee na ña kue'e. Kuvi koto ro'o código.",
   priv1: "Ña ka'an ve'e tatan kuiti ka'an ña'a xi'in yo'o.",
   priv2: "Ña kue'e ma ka'an ña'a; tatan ka'an xi'in yo'o.",
   path: "Ichi na kue'e",
@@ -131,6 +136,7 @@ const ZAP: Lengua["text"] = {
   onbTitle: "Zabedu lii xi modo nuu ni huará stiu",
   onbChoose: "Guixhe diidxa' stiu",
   onbCard: "Bicaa ni nuu lu tarjeta stiu",
+  onbCardSub: "Biidicabe lii ora bicaacabe ni huará stiu. Zanda guiiyu código ca.",
   priv1: "Ni rabi hospital ngasi zabedu lii.",
   priv2: "Qué zabedu lii xi huará ni; doctor nga zabi lii.",
   path: "Neza ni huará stiu",
@@ -154,6 +160,7 @@ const OTO: Lengua["text"] = {
   onbTitle: "Ga xiki'i hanja bi 'bu̱i ri tsa'ya",
   onbChoose: "Huahni ri hñä",
   onbCard: "Ofo te bi 'bu̱i ha ri tarjeta",
+  onbCardSub: "Bi uni'i nu'bu̱ bi ofo ri tsa'ya. Sa gi hyandi ri código.",
   priv1: "Ho'ä ga xiki'i te i ma ngu ñ'eni.",
   priv2: "Hingi ga xiki'i te pe̱ts'i ri tsa'ya; ri ñ'eni da xiki'i.",
   path: "Ri ñuu ri tsa'ya",
@@ -174,6 +181,8 @@ const HCH: Lengua["text"] = {
   welcome: "Kepauxa, Rosa. Ne Painani: nepitixaxatani ke peyeika kwiniyame.",
   onbTitle: "Nepitixaxatani ke peyeika kwiniyame",
   onbChoose: "Pexeiya pemiti niukiyari",
+  onbCard: "Xikuxa'ana tarjeta hepaine",
+  onbCardSub: "Hospital pitimieme mekate kwiniyame.",
   priv1: "Hospital ke mutixaxata nexi nepitixaxatani.",
   priv2: "Doctor pitixaxatani kwiniyari.",
   urgentTitle: "Doctor pitixaxatanike",

@@ -154,3 +154,7 @@ button {
 .pulso { transform-box: fill-box; transform-origin: center; animation: pulso 2s ease-out infinite; }
 @keyframes pulso { from { transform: scale(0.6); opacity: 0.5; } to { transform: scale(1.8); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .ruta, .pulso { animation: none; } }
+
+/* Carruseles: deslizar sin barra de desplazamiento visible */
+.no-scrollbar { scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

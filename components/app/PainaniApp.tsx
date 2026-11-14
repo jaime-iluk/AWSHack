@@ -16,7 +16,7 @@ import {
 } from "@/data/demo";
 import { canRest, type DemoState, type PhoneMessage } from "@/lib/reducer";
 import { fmtElapsed, fmtTime } from "@/lib/useDemo";
-import { Ayuda, Bateria, Campana, Casa, Cerrar, Check, Enviar, Flecha, Mapa, Marca, Mensaje, Play, Señal, Telefono } from "../Icons";
+import { Ayuda, Bateria, Campana, Casa, Cerrar, Check, Enviar, Flecha, Mapa, Marca, Mensaje, Play, Reloj, Señal, Telefono } from "../Icons";
 import { Escena, Mini, Nubes, type Mood } from "../Illustrations";
 import { MapaCerca } from "./MapaCerca";
 import { AUDIO_FILES, LENGUAS, audioOf, lengua, tx } from "@/data/lenguas";
@@ -192,6 +192,7 @@ function copyFor(lang: string): Copy {
     title: t("onbTitle") ?? COPY_ES.title,
     choose: t("onbChoose") ?? COPY_ES.choose,
     cardTitle: t("onbCard") ?? COPY_ES.cardTitle,
+    cardSub: t("onbCardSub") ?? COPY_ES.cardSub,
     priv: [t("priv1") ?? COPY_ES.priv[0], t("priv2") ?? COPY_ES.priv[1], COPY_ES.priv[2]],
   };
 }
@@ -220,6 +221,13 @@ function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: s
   const toPrivacy = () => {
     setStep(2);
     playAudio(privacyOwn ? audioOf(lang, "privacidad") : undefined, privacyText);
+  };
+  // Paso de la tarjeta: se lee en la lengua elegida al entrar, en el mismo toque de "Continuar".
+  const cardOwn = native && tx(lang, "onbCard") ? `${c.cardTitle}. ${tx(lang, "onbCardSub") ?? ""}`.trim() : undefined;
+  const cardEs = `${COPY_ES.cardTitle}. ${COPY_ES.cardSub}`;
+  const toCard = () => {
+    setStep(1);
+    playAudio(cardOwn ? audioOf(lang, "onbCard") : undefined, cardOwn ?? cardEs);
   };
   // Al tocar una lengua, se escucha el saludo en esa lengua: así se elige aunque no se lea.
   const pick = (id: string) => {
@@ -279,7 +287,7 @@ function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: s
           </div>
           {c.note && <p className="mt-2 text-center text-sm font-bold text-cafe">{c.note}</p>}
           <div className="mt-auto pt-4">
-            <Primario onClick={() => setStep(1)}>{c.cont}</Primario>
+            <Primario onClick={toCard}>{c.cont}</Primario>
           </div>
         </div>
       </div>
@@ -305,8 +313,10 @@ function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: s
           <h2>
             <Bi main={c.cardTitle} es={es.cardTitle} nah={native} lang={lang} className="text-[20px] font-extrabold leading-tight" subClass="mt-0.5 text-base font-bold leading-tight" />
           </h2>
-          <Escuchar lang={lang} k="onbCard" text={native && tx(lang, "onbCard") ? c.cardTitle : undefined} es={`${es.cardTitle}. ${es.cardSub}`} className="mt-2" />
-          <p className="mt-2 text-sm text-tinta-suave">{c.cardSub}</p>
+          <Escuchar lang={lang} k="onbCard" text={cardOwn} es={cardEs} className="mt-2" />
+          <p className="mt-2 text-sm">
+            <Bi main={c.cardSub} es={es.cardSub} nah={native} lang={lang} className="font-bold" subClass="mt-0.5 text-[13px]" />
+          </p>
           <label className="mt-5 text-sm font-bold text-tinta-suave" htmlFor="folio">
             {c.folio}
           </label>
@@ -362,6 +372,103 @@ function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: s
   );
 }
 
+/* ---------- Carrusel (deslizar con el dedo, con puntos abajo) ---------- */
+function Carrusel({
+  slides,
+  index,
+  onIndex,
+  label,
+  className = "",
+  slideClass = "w-[86%]",
+}: {
+  slides: { id: string; node: React.ReactNode; title: string }[];
+  index: number;
+  onIndex: (i: number) => void;
+  label: string;
+  className?: string;
+  slideClass?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const fromScroll = useRef(false);
+  const auto = useRef(false); // deslizamiento hecho por código: no reportar índices intermedios
+  const settle = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Si el índice cambia desde fuera (pin del mapa, aviso nuevo), deslizar hasta esa tarjeta.
+  useEffect(() => {
+    if (fromScroll.current) {
+      fromScroll.current = false;
+      return;
+    }
+    const el = ref.current?.children[index] as HTMLElement | undefined;
+    if (!el || !ref.current) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    auto.current = true;
+    setTimeout(() => (auto.current = false), 600);
+    ref.current.scrollTo({ left: el.offsetLeft - (ref.current.clientWidth - el.clientWidth) / 2, behavior: reduce ? "auto" : "smooth" });
+  }, [index, slides.length]);
+  const onScroll = () => {
+    if (auto.current) return;
+    if (settle.current) clearTimeout(settle.current);
+    settle.current = setTimeout(pickCenter, 90);
+  };
+  const pickCenter = () => {
+    const box = ref.current;
+    if (!box) return;
+    const mid = box.scrollLeft + box.clientWidth / 2;
+    let best = 0;
+    let dist = Infinity;
+    Array.from(box.children).forEach((c, i) => {
+      const el = c as HTMLElement;
+      const d = Math.abs(el.offsetLeft + el.clientWidth / 2 - mid);
+      if (d < dist) {
+        dist = d;
+        best = i;
+      }
+    });
+    if (best !== index) {
+      fromScroll.current = true;
+      onIndex(best);
+    }
+  };
+  return (
+    <div className={className}>
+      <div
+        ref={ref}
+        onScroll={onScroll}
+        role="region"
+        aria-roledescription="carrusel"
+        aria-label={label}
+        className="no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth px-[7%] pb-1"
+      >
+        {slides.map((sl, i) => (
+          <div
+            key={sl.id}
+            role="group"
+            aria-roledescription="tarjeta"
+            aria-label={`${i + 1} de ${slides.length}: ${sl.title}`}
+            className={`shrink-0 snap-center transition-[transform,opacity] duration-300 ${slideClass} ${i === index ? "" : "scale-[0.94] opacity-70"}`}
+          >
+            {sl.node}
+          </div>
+        ))}
+      </div>
+      {slides.length > 1 && (
+        <div className="mt-3 flex justify-center gap-1.5">
+          {slides.map((sl, i) => (
+            <button
+              key={sl.id}
+              type="button"
+              onClick={() => onIndex(i)}
+              aria-label={`Ver ${sl.title}`}
+              aria-current={i === index}
+              className={`h-2 rounded-full transition-all duration-300 ${i === index ? "w-6 bg-tinta" : "w-2 bg-tinta/20"}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ---------- Hoy ---------- */
 function Hoy({ state, onAsk, onBreathe, go, lang }: { state: DemoState; onAsk: (t: string) => void; onBreathe: () => void; go: (t: Tab) => void; lang: string }) {
   const s = statusByCode(state.status);
@@ -370,9 +477,147 @@ function Hoy({ state, onAsk, onBreathe, go, lang }: { state: DemoState; onAsk: (
   const mood = moodOf(state);
   const pending = state.pendings[0];
   const urgent = state.call.state !== "idle" && state.call.state !== "coming";
+  const [idx, setIdx] = useState(0);
+  // Cada aviso nuevo regresa el carrusel a la primera tarjeta (el estado de su paciente).
+  useEffect(() => {
+    setIdx(0);
+  }, [state.status, state.pendings.length, state.nextReport]);
+
+  const card = "flex h-[440px] flex-col overflow-hidden rounded-[28px] shadow-[0_2px_0_#ebe7e1]";
+  const slides: { id: string; title: string; node: React.ReactNode }[] = [];
+
+  slides.push({
+    id: "estado",
+    title: "Cómo va su paciente",
+    node: (
+      <article className={`${card} bg-white`}>
+        <Escena mood={mood} className="h-[46%] w-full shrink-0" />
+        <div className="flex flex-1 flex-col p-5">
+          <p className={`text-sm font-extrabold ${urgent || pending ? "text-naranja" : "text-jade-oscuro"}`}>
+            {urgent ? "Le necesitamos" : state.call.state === "coming" ? "Va en camino" : `Etapa ${state.stage} de ${STAGES.length}`}
+          </p>
+          {own ? (
+            <>
+              <p lang={lang} className="mt-1 text-xl font-extrabold leading-snug text-pretty">{own}</p>
+              <p className="mt-1 text-sm leading-snug text-tinta-suave text-pretty">{s.es}</p>
+            </>
+          ) : (
+            <p className="mt-1 text-xl font-extrabold leading-snug text-pretty">{s.es}</p>
+          )}
+          <div className="mt-auto flex items-center justify-between gap-2 pt-3">
+            <Escuchar lang={lang} k={state.status} text={own} es={s.es} />
+            <span className="text-xs text-tinta-suave tabular">{fmtTime(state.lastChangeAt)}</span>
+          </div>
+        </div>
+      </article>
+    ),
+  });
+
+  if (pending) {
+    slides.push({
+      id: "pendiente",
+      title: "Se necesita algo de usted",
+      node: (
+        <article className={`${card} bg-maiz-claro p-5`}>
+          <Mini kind="tramite" className="size-24" />
+          <p className="mt-4 text-sm font-extrabold text-cafe">Se necesita algo de usted</p>
+          {tx(lang, pending.code) && <p lang={lang} className="mt-1 text-xl font-extrabold leading-snug">{tx(lang, pending.code)}</p>}
+          <p className={tx(lang, pending.code) ? "mt-1 text-sm leading-snug" : "mt-1 text-xl font-extrabold leading-snug"}>{pendingByCode(pending.code).es}</p>
+          <div className="mt-auto flex flex-col gap-2">
+            <Escuchar lang={lang} k={pending.code} text={tx(lang, pending.code) ?? tx(lang, "E08")} es={pendingByCode(pending.code).es} tone="blanco" />
+            <Primario
+              onClick={() => {
+                onAsk("¿Qué trámites tengo que hacer?");
+                go("mensajes");
+              }}
+              tone="azul"
+            >
+              Ver qué hacer
+            </Primario>
+          </div>
+        </article>
+      ),
+    });
+  }
+
+  if (canRest(state)) {
+    slides.push({
+      id: "descanso",
+      title: "Puede descansar",
+      node: (
+        <article className={`${card} relative bg-noche p-5 text-white`}>
+          <Nubes className="absolute inset-x-0 top-0 h-[45%] w-full opacity-60" />
+          <div className="relative mt-[38%] flex flex-1 flex-col">
+            <p className="text-sm font-extrabold text-maiz">Puede descansar</p>
+            {tx(lang, "rest") && <p lang={lang} className="mt-1 text-lg font-extrabold leading-snug text-pretty">{tx(lang, "rest")}</p>}
+            <p className={`mt-1 leading-snug text-pretty ${tx(lang, "rest") ? "text-sm text-white/80" : "text-lg font-extrabold"}`}>{restEs}</p>
+            <div className="mt-auto flex flex-wrap items-center gap-2 pt-3">
+              <Escuchar lang={lang} k="rest" text={tx(lang, "rest")} es={restEs} tone="noche" />
+              <button type="button" onClick={onBreathe} className="flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-bold hover:bg-white/25">
+                Respirar <Flecha width={16} height={16} />
+              </button>
+            </div>
+          </div>
+        </article>
+      ),
+    });
+  }
+
+  slides.push({
+    id: "informe",
+    title: "Próximo informe médico",
+    node: (
+      <article className={`${card} items-center justify-center bg-azul p-6 text-center text-white`}>
+        <span className="grid size-20 place-items-center rounded-full bg-white/15">
+          <Reloj width={40} height={40} />
+        </span>
+        <p className="mt-5 text-sm font-extrabold opacity-80">Próximo informe médico</p>
+        <p className="mt-1 text-[56px] font-extrabold leading-none tabular">{state.nextReport ?? "--:--"}</p>
+        <p className="mt-3 text-[15px] leading-snug opacity-90 text-pretty">
+          {state.nextReport ? `En ${HOSPITAL.reportPlace}. Ahí el médico le explica cómo está.` : "El hospital aún no lo confirma. Le avisaremos aquí."}
+        </p>
+      </article>
+    ),
+  });
+
+  slides.push({
+    id: "camino",
+    title: "El camino de su paciente",
+    node: (
+      <article className={`${card} bg-white p-5`}>
+        <h3 className="text-lg font-extrabold leading-tight">
+          {tx(lang, "path") ? <span lang={lang}>{tx(lang, "path")}</span> : "El camino de su paciente"}
+          {tx(lang, "path") && <span className="block text-sm font-bold text-tinta-suave">El camino de su paciente</span>}
+        </h3>
+        <ol className="relative mt-3 flex flex-1 flex-col justify-between">
+          <span aria-hidden className="absolute bottom-5 left-[11px] top-5 border-l-2 border-dashed border-linea" />
+          {STAGES.map((st, i) => {
+            const done = st.stage < state.stage;
+            const now = st.stage === state.stage;
+            return (
+              <li key={st.stage} className="relative flex items-center gap-3" aria-current={now ? "step" : undefined}>
+                <span
+                  className={`relative z-10 grid size-6 shrink-0 place-items-center rounded-full border-2 ${
+                    now ? "border-naranja bg-naranja" : done ? "border-jade bg-jade text-white" : "border-tinta-suave/40 bg-white"
+                  }`}
+                >
+                  {done && <Check width={12} height={12} />}
+                </span>
+                <Mini kind={STAGE_MINI[i]} className={`size-10 shrink-0 ${!now && !done ? "opacity-50" : ""}`} />
+                <div className="min-w-0">
+                  <p className={`text-[15px] font-extrabold leading-tight ${!now && !done ? "text-tinta-suave" : ""}`}>{st.es}</p>
+                  <p className="text-xs text-tinta-suave">{now ? "Aquí va ahora" : done ? "Listo" : "Más adelante"}</p>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      </article>
+    ),
+  });
 
   return (
-    <div key="hoy" className="entra pb-6">
+    <div key="hoy" className="entra pb-24">
       <header className="flex items-center justify-between px-5 pb-3 pt-2">
         <h2 className="text-2xl font-extrabold">
           {tx(lang, "hoy") ? (
@@ -387,95 +632,8 @@ function Hoy({ state, onAsk, onBreathe, go, lang }: { state: DemoState; onAsk: (
           <Campana />
         </button>
       </header>
-
-      <div className="mx-4 overflow-hidden rounded-3xl bg-white shadow-[0_2px_0_#ebe7e1]">
-        <Escena mood={mood} className="h-36 w-full" />
-        <div className="p-4">
-          <p className={`text-sm font-extrabold ${urgent || pending ? "text-naranja" : "text-jade-oscuro"}`}>
-            {urgent ? "Le necesitamos" : state.call.state === "coming" ? "Va en camino" : `Etapa ${state.stage} de ${STAGES.length}`}
-          </p>
-          {own ? (
-            <>
-              <p lang={lang} className="mt-1 text-lg font-extrabold leading-snug text-pretty">{own}</p>
-              <p className="mt-1 text-sm leading-snug text-tinta-suave text-pretty">{s.es}</p>
-            </>
-          ) : (
-            <p className="mt-1 text-lg font-extrabold leading-snug text-pretty">{s.es}</p>
-          )}
-          <p className="mt-1 text-xs text-tinta-suave tabular">Último aviso del hospital: {fmtTime(state.lastChangeAt)}</p>
-          <Escuchar lang={lang} k={state.status} text={own} es={s.es} className="mt-3" />
-        </div>
-      </div>
-
-      {pending && (
-        <div className="mx-4 mt-3 flex items-center gap-3 rounded-3xl bg-maiz-claro p-4">
-          <Mini kind="tramite" className="size-14 shrink-0" />
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-extrabold text-cafe">Se necesita algo de usted</p>
-            {tx(lang, pending.code) && <p lang={lang} className="font-extrabold leading-tight">{tx(lang, pending.code)}</p>}
-            <p className={tx(lang, pending.code) ? "text-sm leading-tight" : "font-extrabold leading-tight"}>{pendingByCode(pending.code).es}</p>
-            <Escuchar lang={lang} k={pending.code} text={tx(lang, pending.code) ?? tx(lang, "E08")} es={pendingByCode(pending.code).es} tone="blanco" className="mt-2 text-xs" />
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              onAsk("¿Qué trámites tengo que hacer?");
-              go("mensajes");
-            }}
-            className="shrink-0 rounded-full bg-tinta px-3.5 py-2 text-sm font-bold text-white"
-          >
-            Ver qué hacer
-          </button>
-        </div>
-      )}
-
-      {canRest(state) && (
-        <div className="mx-4 mt-3 rounded-3xl bg-noche p-4 text-white">
-          {tx(lang, "rest") && <p lang={lang} className="mb-1.5 text-[15px] font-extrabold leading-snug text-pretty">{tx(lang, "rest")}</p>}
-          <p className={`leading-snug text-pretty ${tx(lang, "rest") ? "text-sm text-white/80" : "text-[15px]"}`}>{restEs}</p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Escuchar lang={lang} k="rest" text={tx(lang, "rest")} es={restEs} tone="noche" />
-            <button type="button" onClick={onBreathe} className="flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-bold hover:bg-white/25">
-              Respirar un momento <Flecha width={16} height={16} />
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="mx-4 mt-3 flex items-center justify-between rounded-3xl bg-white px-4 py-3 shadow-[0_2px_0_#ebe7e1]">
-        <span className="text-sm font-bold text-tinta-suave">Próximo informe médico</span>
-        <span className="text-xl font-extrabold tabular">{state.nextReport ?? "Por confirmar"}</span>
-      </div>
-
-      <h3 className="mx-5 mt-6 text-lg font-extrabold">
-        {tx(lang, "path") ? <span lang={lang}>{tx(lang, "path")}</span> : "El camino de su paciente"}
-        {tx(lang, "path") && <span className="block text-sm font-bold text-tinta-suave">El camino de su paciente</span>}
-      </h3>
-      <ol className="relative mx-4 mt-3 flex flex-col gap-3">
-        <span aria-hidden className="absolute bottom-6 left-[11px] top-6 border-l-2 border-dashed border-linea" />
-        {STAGES.map((st, i) => {
-          const done = st.stage < state.stage;
-          const now = st.stage === state.stage;
-          return (
-            <li key={st.stage} className="relative flex items-center gap-3" aria-current={now ? "step" : undefined}>
-              <span
-                className={`relative z-10 grid size-6 shrink-0 place-items-center rounded-full border-2 ${
-                  now ? "border-naranja bg-naranja" : done ? "border-jade bg-jade text-white" : "border-tinta-suave/40 bg-white"
-                }`}
-              >
-                {done && <Check width={12} height={12} />}
-              </span>
-              <div className={`flex flex-1 items-center gap-3 rounded-2xl p-2.5 pr-3 ${now ? "bg-white shadow-[0_2px_0_#ebe7e1]" : "bg-transparent"}`}>
-                <Mini kind={STAGE_MINI[i]} className={`size-12 shrink-0 ${!now && !done ? "opacity-50" : ""}`} />
-                <div>
-                  <p className={`font-extrabold ${!now && !done ? "text-tinta-suave" : ""}`}>{st.es}</p>
-                  <p className="text-xs text-tinta-suave">{now ? "Aquí va ahora" : done ? "Listo" : "Más adelante"}</p>
-                </div>
-              </div>
-            </li>
-          );
-        })}
-      </ol>
+      <Carrusel slides={slides} index={Math.min(idx, slides.length - 1)} onIndex={setIdx} label="Resumen de hoy" />
+      <p className="mt-2 text-center text-xs font-bold text-tinta-suave">Deslice para ver más</p>
     </div>
   );
 }
@@ -586,7 +744,7 @@ function Cerca({ onAsk, go, lang }: { onAsk: (t: string) => void; go: (t: Tab) =
   const [sel, setSel] = useState<string | null>("alb-1");
   const cercaEs = `Cerca del hospital: ${PLACES.map((p) => `${p.name.replace(" (ejemplo)", "")}, ${p.walk.replace("·", ",")}`).join(". ")}.`;
   return (
-    <div key="cerca" className="entra px-4 pb-6">
+    <div key="cerca" className="entra px-4 pb-24">
       <header className="px-1 pb-3 pt-2">
         <h2 className="text-2xl font-extrabold">Cerca del hospital</h2>
         {tx(lang, "cerca") && <p lang={lang} className="mt-1 font-bold leading-snug text-pretty">{tx(lang, "cerca")}</p>}
@@ -594,53 +752,52 @@ function Cerca({ onAsk, go, lang }: { onAsk: (t: string) => void; go: (t: Tab) =
         <Escuchar lang={lang} k="cerca" text={tx(lang, "cerca")} es={cercaEs} className="mt-2" />
       </header>
       <MapaCerca selected={sel} onSelect={setSel} />
-      <ul className="mt-3 flex flex-col gap-3">
-        {PLACES.map((p) => (
-          <li
-            key={p.id}
-            onClick={() => setSel(p.id === sel ? null : p.id)}
-            className={`flex cursor-pointer gap-3 rounded-3xl bg-white p-3 shadow-[0_2px_0_#ebe7e1] transition ${p.id === sel ? "ring-2 ring-azul" : ""}`}
-          >
-            <Mini kind={p.type} className="size-20 shrink-0" />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-start justify-between gap-2">
-                <p className="font-extrabold leading-tight">{p.name}</p>
-                <button
-                  type="button"
-                  aria-label={`Escuchar: ${p.name}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSel(p.id);
-                    speak(`${p.name.replace(" (ejemplo)", "")}. ${p.walk.replace("·", ",")}. ${p.hours}. ${p.cost === "—" ? "" : p.cost}`);
-                  }}
-                  className="grid size-8 shrink-0 place-items-center rounded-full bg-azul-claro text-azul"
-                >
-                  <Play width={13} height={13} />
-                </button>
-              </div>
-              <p className="mt-0.5 text-sm text-tinta-suave">{p.walk}</p>
-              <p className="text-sm text-tinta-suave">
-                {p.hours}. {p.cost}
-              </p>
-              {p.beds !== undefined && (
-                <p className="mt-1 w-fit rounded-full bg-jade-claro px-2.5 py-0.5 text-xs font-extrabold text-jade-oscuro">
-                  {p.beds} camas libres a las {p.bedsReportedAt}
+      {/* Lugares en carrusel: deslizar cambia el pin del mapa, tocar un pin mueve el carrusel */}
+      <Carrusel
+        className="-mx-4 mt-3"
+        slideClass="w-[84%]"
+        label="Lugares cerca del hospital"
+        index={Math.max(0, PLACES.findIndex((p) => p.id === sel))}
+        onIndex={(i) => setSel(PLACES[i].id)}
+        slides={PLACES.map((p) => ({
+          id: p.id,
+          title: p.name,
+          node: (
+            <article
+              onClick={() => setSel(p.id)}
+              className={`flex h-[172px] cursor-pointer gap-3 rounded-[28px] bg-white p-3 shadow-[0_2px_0_#ebe7e1] ${p.id === sel ? "ring-2 ring-azul" : ""}`}
+            >
+              <Mini kind={p.type} className="size-16 shrink-0" />
+              <div className="flex min-w-0 flex-1 flex-col">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="line-clamp-2 text-[15px] font-extrabold leading-tight">{p.name.replace(" (ejemplo)", "")}</p>
+                  <button
+                    type="button"
+                    aria-label={`Escuchar: ${p.name}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSel(p.id);
+                      speak(`${p.name.replace(" (ejemplo)", "")}. ${p.walk.replace("·", ",")}. ${p.hours}. ${p.cost === "—" ? "" : p.cost}`);
+                    }}
+                    className="grid size-8 shrink-0 place-items-center rounded-full bg-azul-claro text-azul"
+                  >
+                    <Play width={13} height={13} />
+                  </button>
+                </div>
+                <p className="mt-0.5 text-sm text-tinta-suave">{p.walk}</p>
+                <p className="text-sm text-tinta-suave">
+                  {p.hours}. {p.cost}
                 </p>
-              )}
-            </div>
-          </li>
-        ))}
-      </ul>
-      <button
-        type="button"
-        onClick={() => {
-          onAsk("¿Dónde puedo dormir?");
-          go("mensajes");
-        }}
-        className="mt-4 w-full rounded-full border-2 border-linea py-3 font-extrabold text-azul hover:bg-white"
-      >
-        Preguntar al asistente
-      </button>
+                {p.beds !== undefined && (
+                  <p className="mt-auto w-fit rounded-full bg-jade-claro px-2.5 py-0.5 text-xs font-extrabold text-jade-oscuro">
+                    {p.beds} camas libres a las {p.bedsReportedAt}
+                  </p>
+                )}
+              </div>
+            </article>
+          ),
+        }))}
+      />
     </div>
   );
 }
@@ -655,7 +812,7 @@ function AyudaView({ onAsk, go, lang }: { onAsk: (t: string) => void; go: (t: Ta
     go("mensajes");
   };
   return (
-    <div key="ayuda" className="entra px-4 pb-6">
+    <div key="ayuda" className="entra px-4 pb-24">
       <header className="px-1 pb-3 pt-2">
         <h2 className="text-2xl font-extrabold">Ayuda</h2>
         {tx(lang, "ayuda") && <p lang={lang} className="mt-1 font-bold leading-snug text-pretty">{tx(lang, "ayuda")}</p>}
