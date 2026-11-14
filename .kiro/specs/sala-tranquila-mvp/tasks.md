@@ -35,6 +35,7 @@
 
 ## Bloque 4 (≈10 min): ensayo
 - [ ] 9. [P0] Revisión rápida con `web-design-guidelines` sobre `components/`. Ensayar el guion 2 veces y grabar la pantalla como respaldo.
+  - Hecho (dev 2): revisión con `web-design-guidelines` y correcciones, guion ensayado con Playwright y video de respaldo grabado (`painani-demo-respaldo.mp4`, fuera del repo). Falta: ensayo en vivo con narración.
 
 ## Solo si sobra tiempo
 - [x] 10. [P1] Cambiar el agente fijo por un LLM real (Bedrock) con las respuestas fijas como respaldo.
@@ -52,7 +53,7 @@ Usar **Next.js** (no Vite), porque el carril B necesita rutas de API.
 **Carril B — "lo real" (dev de backend/IA):**
 - [x] B1. [P0] Agente real: `app/api/agent/route.ts` con Bedrock (Claude Haiku), tool calling sobre `data/demo.ts` (`consultar_estado`, `buscar_lugares`) y guardrail clínico. Las respuestas fijas de la tarea 8 quedan como respaldo si falla o no hay credenciales. (≈60 min)
 - [x] B2. [P0] Un aviso real al teléfono: `app/api/notify/route.ts` que manda por el **sandbox de WhatsApp de Twilio** el texto de E07 a un celular del equipo. En la demo, al tocar E07 vibra un teléfono de verdad frente a los jueces; el escalamiento sigue simulado en pantalla. (≈30 min)
-- [ ] B3. [P1] Prueba E2E del guion con Playwright (el skill `webapp-testing` no está instalado; agregarlo solo si se hace esta tarea).
+- [x] B3. [P1] Prueba E2E del guion con Playwright (`npm run test:e2e`) (el skill `webapp-testing` no está instalado; agregarlo solo si se hace esta tarea).
 
 **Últimos 15 min, juntos:** integrar (el teléfono simulado llama a `/api/agent`; el botón E07 llama a `/api/notify`) y ensayar con el video de respaldo grabado.
 

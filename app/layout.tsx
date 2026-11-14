@@ -1,14 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Atkinson_Hyperlegible } from "next/font/google";
-import "./globals.css";
-
 // Atkinson Hyperlegible: diseñada por el Braille Institute para baja visión y lectura difícil.
-const atkinson = Atkinson_Hyperlegible({
-  variable: "--font-atkinson",
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  display: "swap",
-});
+// Autoalojada (sin Google Fonts) para que la demo compile y se vea igual aunque no haya internet.
+import "@fontsource/atkinson-hyperlegible/latin-400.css";
+import "@fontsource/atkinson-hyperlegible/latin-700.css";
+import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Painani",
@@ -21,7 +16,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="es" className={`${atkinson.variable} h-full antialiased`}>
+    <html lang="es" className="h-full antialiased">
       <body className="min-h-full">{children}</body>
     </html>
   );

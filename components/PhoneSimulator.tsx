@@ -41,7 +41,7 @@ function Bubble({ m }: { m: PhoneMessage }) {
           type="button"
           onClick={() => playAudio(m.audio)}
           aria-label="Escuchar el aviso en náhuatl"
-          className="mt-2 flex items-center gap-2 rounded-full bg-anil-50 py-1.5 pl-2 pr-3 text-xs font-bold text-anil-700 transition-colors duration-200 hover:bg-anil-100"
+          className="mt-2 flex min-h-11 items-center gap-2 rounded-full bg-anil-50 py-1.5 pl-3 pr-4 text-sm font-bold text-anil-700 transition-colors duration-200 hover:bg-anil-100"
         >
           <Play width={14} height={14} /> Escuchar en náhuatl
         </button>
@@ -72,7 +72,7 @@ export function PhoneSimulator({ state, onAsk, onConfirm }: { state: DemoState; 
   }, [calling]);
 
   const send = (t: string) => {
-    if (!t.trim()) return;
+    if (!t.trim() || state.agentTyping) return;
     onAsk(t);
     setText("");
   };
@@ -104,7 +104,7 @@ export function PhoneSimulator({ state, onAsk, onConfirm }: { state: DemoState; 
           </ol>
         </div>
 
-        {awaiting && (
+        {awaiting && !calling && (
           <button
             type="button"
             onClick={onConfirm}
@@ -120,7 +120,8 @@ export function PhoneSimulator({ state, onAsk, onConfirm }: { state: DemoState; 
               key={q}
               type="button"
               onClick={() => send(q)}
-              className="shrink-0 rounded-full border border-anil-100 bg-white px-3 py-1.5 text-sm text-anil-700 transition-colors duration-200 hover:border-anil-500"
+              disabled={state.agentTyping}
+              className="min-h-11 shrink-0 rounded-full border border-anil-100 bg-white px-3 py-1.5 text-sm disabled:opacity-60 text-anil-700 transition-colors duration-200 hover:border-anil-500"
             >
               {q}
             </button>

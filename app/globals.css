@@ -26,6 +26,10 @@
   --font-sans: var(--font-atkinson), system-ui, sans-serif;
 }
 
+:root {
+  --font-atkinson: "Atkinson Hyperlegible";
+}
+
 html {
   background: var(--color-cal);
   color: var(--color-anil-950);

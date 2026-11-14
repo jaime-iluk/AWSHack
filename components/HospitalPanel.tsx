@@ -54,7 +54,7 @@ export function HospitalPanel({ state, onPress, onReset }: { state: DemoState; o
             onClick={onReset}
             aria-label="Reiniciar demo"
             title="Reiniciar demo"
-            className="grid size-9 place-items-center rounded-full text-tinta-muted transition-colors duration-200 hover:bg-cal hover:text-anil-950"
+            className="grid size-11 place-items-center rounded-full text-tinta-muted transition-colors duration-200 hover:bg-cal hover:text-anil-950"
           >
             <Reiniciar width={18} height={18} />
           </button>
