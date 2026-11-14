@@ -19,6 +19,7 @@ import { fmtElapsed, fmtTime } from "@/lib/useDemo";
 import { Ayuda, Bateria, Campana, Casa, Cerrar, Check, Enviar, Flecha, Mapa, Marca, Mensaje, Play, Señal, Telefono } from "../Icons";
 import { Escena, Mini, Nubes, type Mood } from "../Illustrations";
 import { MapaCerca } from "./MapaCerca";
+import { LENGUAS, audioOf, lengua, tx } from "@/data/lenguas";
 
 type Tab = "hoy" | "mensajes" | "cerca" | "ayuda";
 type Props = {
@@ -61,19 +62,39 @@ function playAudio(src?: string, text?: string) {
   a.play().catch(fallback);
 }
 
-function Escuchar({ text, src, className = "", label }: { text: string; src?: string; className?: string; label?: string }) {
+// Botón de audio en la lengua elegida. Sin texto en la lengua, lee el español.
+function Escuchar({
+  lang,
+  text,
+  es,
+  k,
+  className = "",
+  tone = "claro",
+}: {
+  lang: string;
+  text?: string;
+  es: string;
+  k?: string;
+  className?: string;
+  tone?: "claro" | "blanco" | "noche";
+}) {
+  const own = !!text;
+  const listen = tx(lang, "listen");
+  const tones = { claro: "bg-azul-claro text-azul", blanco: "bg-white text-azul", noche: "bg-white/15 text-white" };
   return (
     <button
       type="button"
-      onClick={() => playAudio(src, text)}
-      aria-label="Escuchar en náhuatl"
-      className={`flex w-fit items-center gap-2 rounded-full bg-azul-claro py-1.5 pl-2.5 pr-3.5 text-sm font-bold text-azul ${className}`}
+      onClick={() => playAudio(own && k ? audioOf(lang, k) : undefined, own ? text : es)}
+      aria-label={`Escuchar en ${own ? lengua(lang).name : "español"}`}
+      className={`flex w-fit items-center gap-2 rounded-full py-1.5 pl-2.5 pr-3.5 text-sm font-bold ${tones[tone]} ${className}`}
     >
       <Play width={14} height={14} />{" "}
-      {label ?? (
+      {own && listen ? (
         <>
-          {NAH_TEXT.listen} <span className="font-semibold opacity-75">· Escuchar</span>
+          <span lang={lang}>{listen}</span> <span className="font-semibold opacity-75">· Escuchar</span>
         </>
+      ) : (
+        "Escuchar"
       )}
     </button>
   );
@@ -158,31 +179,51 @@ const COPY_NAH: Copy = {
 
 const COPY_OTRA: Copy = { ...COPY_ES, note: "Una voluntaria le ayudará en su lengua. Mientras, le mostramos todo en español." };
 
-// Texto principal en la lengua elegida; con náhuatl, el español va debajo como apoyo.
-function Bi({ main, es, nah, className = "", subClass = "" }: { main: string; es: string; nah: boolean; className?: string; subClass?: string }) {
+// Copia del onboarding para cada lengua: lo que no tenga borrador se queda en español.
+function copyFor(lang: string): Copy {
+  if (lang === "nah") return COPY_NAH;
+  if (lang === "otra") return COPY_OTRA;
+  if (lang === "es") return COPY_ES;
+  const t = (k: Parameters<typeof tx>[1]) => tx(lang, k);
+  return {
+    ...COPY_ES,
+    title: t("onbTitle") ?? COPY_ES.title,
+    choose: t("onbChoose") ?? COPY_ES.choose,
+    cardTitle: t("onbCard") ?? COPY_ES.cardTitle,
+    priv: [t("priv1") ?? COPY_ES.priv[0], t("priv2") ?? COPY_ES.priv[1], COPY_ES.priv[2]],
+  };
+}
+
+// Texto principal en la lengua elegida; si es otra lengua, el español va debajo como apoyo.
+function Bi({ main, es, nah, lang = "nah", className = "", subClass = "" }: { main: string; es: string; nah: boolean; lang?: string; className?: string; subClass?: string }) {
+  const own = nah && main !== es;
   return (
     <>
-      <span lang={nah ? "nah" : "es"} className={`block ${className}`}>{main}</span>
-      {nah && main !== es && <span className={`block text-tinta-suave ${subClass}`}>{es}</span>}
+      <span lang={own ? lang : "es"} className={`block ${className}`}>{main}</span>
+      {own && <span className={`block text-tinta-suave ${subClass}`}>{es}</span>}
     </>
   );
 }
 
 function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: string; setLang: (l: string) => void }) {
   const [step, setStep] = useState(0);
-  const nah = lang === "nah";
-  const privacyText = nah ? NAH_TEXT.onbPrivacy : COPY_ES.priv.join(" ");
+  const nah = lang === "nah"; // solo el náhuatl tiene botones y ayudas completos
+  const native = lang !== "es" && lang !== "otra";
+  const c = copyFor(lang);
+  const es = COPY_ES;
+  const privacyOwn = native && (tx(lang, "priv1") || tx(lang, "priv2")) ? `${c.priv[0]} ${c.priv[1]}` : undefined;
+  const privacyText = privacyOwn ?? COPY_ES.priv.join(" ");
   // Al llegar a "Antes de empezar", el aviso de privacidad se lee en voz alta en la lengua elegida.
   useEffect(() => {
-    if (step === 2) playAudio(nah ? "/audio/privacidad.mp3" : undefined, privacyText);
-  }, [step, nah, privacyText]);
-  const c = nah ? COPY_NAH : lang === "otra" ? COPY_OTRA : COPY_ES;
-  const es = COPY_ES;
-  const langs = [
-    { id: "es", label: "Español", sub: "Caxtiltlahtolli" },
-    { id: "nah", label: "Nāhuatlahtōlli", sub: "Náhuatl (mexicano)" },
-    { id: "otra", label: "Occē tlahtōlli", sub: "Otra lengua" },
-  ];
+    if (step === 2) playAudio(privacyOwn ? audioOf(lang, "privacidad") : undefined, privacyText);
+  }, [step, lang, privacyOwn, privacyText]);
+  // Al tocar una lengua, se escucha el saludo en esa lengua: así se elige aunque no se lea.
+  const pick = (id: string) => {
+    setLang(id);
+    const t = tx(id, "onbTitle");
+    playAudio(t ? audioOf(id, "onbTitle") : undefined, t ?? (id === "otra" ? COPY_OTRA.note : COPY_ES.title));
+  };
+  const langs = LENGUAS;
 
   if (step === 0)
     return (
@@ -203,13 +244,13 @@ function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: s
         </div>
         <div className="app-scroll flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-6">
           <h2 className="mt-3 text-center">
-            <Bi main={c.title} es={es.title} nah={nah} className="text-[19px] font-extrabold leading-tight text-balance" subClass="mt-0.5 text-sm font-bold" />
+            <Bi main={c.title} es={es.title} nah={native} lang={lang} className="text-[19px] font-extrabold leading-tight text-balance" subClass="mt-0.5 text-sm font-bold" />
           </h2>
-          {nah && <Escuchar text={`${NAH_TEXT.onbTitle}. ${NAH_TEXT.onbChoose}.`} className="mx-auto mt-2" />}
+          <Escuchar lang={lang} k="bienvenida" text={native && tx(lang, "onbTitle") ? `${c.title}. ${c.choose}.` : undefined} es={`${es.title}. ${es.choose}`} className="mx-auto mt-2" />
           <p className="mt-3 text-center">
-            <Bi main={c.choose} es={es.choose} nah={nah} className="text-base font-extrabold" subClass="text-sm font-bold" />
+            <Bi main={c.choose} es={es.choose} nah={native} lang={lang} className="text-base font-extrabold" subClass="text-sm font-bold" />
           </p>
-          <div className="mt-2.5 flex flex-col gap-2" role="radiogroup" aria-label="Lengua">
+          <div className="mt-2.5 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Lengua">
             {langs.map((l) => {
               const on = lang === l.id;
               return (
@@ -218,16 +259,16 @@ function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: s
                   type="button"
                   role="radio"
                   aria-checked={on}
-                  onClick={() => setLang(l.id)}
-                  className={`flex items-center justify-between rounded-full border-2 px-5 py-2 text-left font-bold transition-colors duration-200 ${
+                  onClick={() => pick(l.id)}
+                  className={`flex items-center justify-between gap-1 rounded-2xl border-2 px-3 py-2 text-left font-bold transition-colors duration-200 ${
                     on ? "border-transparent bg-linea" : "border-linea bg-white hover:border-tinta-suave/30"
                   }`}
                 >
-                  <span>
-                    <span className="block leading-tight">{l.label}</span>
+                  <span className="min-w-0">
+                    <span lang={l.id === "otra" ? "es" : l.id} className="block leading-tight">{l.label}</span>
                     <span className="block text-xs font-semibold text-tinta-suave">{l.sub}</span>
                   </span>
-                  <span className={`grid size-6 place-items-center rounded-full ${on ? "bg-tinta text-white" : "bg-fondo"}`}>{on && <Check width={14} height={14} />}</span>
+                  <span className={`grid size-6 shrink-0 place-items-center rounded-full ${on ? "bg-tinta text-white" : "bg-fondo"}`}>{on && <Check width={14} height={14} />}</span>
                 </button>
               );
             })}
@@ -258,9 +299,10 @@ function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: s
         </div>
         <div className="app-scroll flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-6 pt-6">
           <h2>
-            <Bi main={c.cardTitle} es={es.cardTitle} nah={nah} className="text-[20px] font-extrabold leading-tight" subClass="mt-0.5 text-base font-bold leading-tight" />
+            <Bi main={c.cardTitle} es={es.cardTitle} nah={native} lang={lang} className="text-[20px] font-extrabold leading-tight" subClass="mt-0.5 text-base font-bold leading-tight" />
           </h2>
-          <p className="mt-1 text-sm text-tinta-suave">{c.cardSub}</p>
+          <Escuchar lang={lang} k="onbCard" text={native && tx(lang, "onbCard") ? c.cardTitle : undefined} es={`${es.cardTitle}. ${es.cardSub}`} className="mt-2" />
+          <p className="mt-2 text-sm text-tinta-suave">{c.cardSub}</p>
           <label className="mt-5 text-sm font-bold text-tinta-suave" htmlFor="folio">
             {c.folio}
           </label>
@@ -290,9 +332,9 @@ function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: s
       </div>
       <div className="app-scroll flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-6 pt-5">
         <h2>
-          <Bi main={c.privTitle} es={es.privTitle} nah={nah} className="text-[22px] font-extrabold leading-tight" subClass="text-base font-bold" />
+          <Bi main={c.privTitle} es={es.privTitle} nah={native} lang={lang} className="text-[22px] font-extrabold leading-tight" subClass="text-base font-bold" />
         </h2>
-        <Escuchar text={privacyText} src={nah ? "/audio/privacidad.mp3" : undefined} label={nah ? undefined : "Escuchar"} className="mt-2" />
+        <Escuchar lang={lang} k="privacidad" text={privacyOwn} es={privacyText} className="mt-2" />
         <ul className="mt-4 flex flex-col gap-3 text-[15px] leading-snug">
           {c.priv.map((line, i) => (
             <li key={line} className="flex gap-3">
@@ -300,7 +342,7 @@ function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: s
                 <Check width={14} height={14} />
               </span>
               <span>
-                <Bi main={line} es={es.priv[i]} nah={nah} className={nah ? "font-bold" : ""} subClass="mt-0.5 text-[13px]" />
+                <Bi main={line} es={es.priv[i]} nah={native} lang={lang} className={native && line !== es.priv[i] ? "font-bold" : ""} subClass="mt-0.5 text-[13px]" />
               </span>
             </li>
           ))}
@@ -317,8 +359,10 @@ function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: s
 }
 
 /* ---------- Hoy ---------- */
-function Hoy({ state, onAsk, onBreathe, go, nah }: { state: DemoState; onAsk: (t: string) => void; onBreathe: () => void; go: (t: Tab) => void; nah: boolean }) {
+function Hoy({ state, onAsk, onBreathe, go, lang }: { state: DemoState; onAsk: (t: string) => void; onBreathe: () => void; go: (t: Tab) => void; lang: string }) {
   const s = statusByCode(state.status);
+  const own = tx(lang, state.status);
+  const restEs = REST_PERMISSION.replace("{hora}", state.nextReport ?? "");
   const mood = moodOf(state);
   const pending = state.pendings[0];
   const urgent = state.call.state !== "idle" && state.call.state !== "coming";
@@ -327,9 +371,9 @@ function Hoy({ state, onAsk, onBreathe, go, nah }: { state: DemoState; onAsk: (t
     <div key="hoy" className="entra pb-6">
       <header className="flex items-center justify-between px-5 pb-3 pt-2">
         <h2 className="text-2xl font-extrabold">
-          {nah ? (
+          {tx(lang, "hoy") ? (
             <>
-              <span lang="nah">{NAH_TEXT.hoy}</span> <span className="text-base font-bold text-tinta-suave">Hoy</span>
+              <span lang={lang}>{tx(lang, "hoy")}</span> <span className="text-base font-bold text-tinta-suave">Hoy</span>
             </>
           ) : (
             "Hoy"
@@ -346,15 +390,16 @@ function Hoy({ state, onAsk, onBreathe, go, nah }: { state: DemoState; onAsk: (t
           <p className={`text-sm font-extrabold ${urgent || pending ? "text-naranja" : "text-jade-oscuro"}`}>
             {urgent ? "Le necesitamos" : state.call.state === "coming" ? "Va en camino" : `Etapa ${state.stage} de ${STAGES.length}`}
           </p>
-          {nah && NAH_TEXT[state.status] ? (
+          {own ? (
             <>
-              <p lang="nah" className="mt-1 text-lg font-extrabold leading-snug text-pretty">{NAH_TEXT[state.status]}</p>
+              <p lang={lang} className="mt-1 text-lg font-extrabold leading-snug text-pretty">{own}</p>
               <p className="mt-1 text-sm leading-snug text-tinta-suave text-pretty">{s.es}</p>
             </>
           ) : (
             <p className="mt-1 text-lg font-extrabold leading-snug text-pretty">{s.es}</p>
           )}
           <p className="mt-1 text-xs text-tinta-suave tabular">Último aviso del hospital: {fmtTime(state.lastChangeAt)}</p>
+          <Escuchar lang={lang} k={state.status} text={own} es={s.es} className="mt-3" />
         </div>
       </div>
 
@@ -363,8 +408,9 @@ function Hoy({ state, onAsk, onBreathe, go, nah }: { state: DemoState; onAsk: (t
           <Mini kind="tramite" className="size-14 shrink-0" />
           <div className="min-w-0 flex-1">
             <p className="text-xs font-extrabold text-cafe">Se necesita algo de usted</p>
-            {nah && pending.code === "P03" && <p lang="nah" className="font-extrabold leading-tight">{NAH_TEXT.P03}</p>}
-            <p className={nah && pending.code === "P03" ? "text-sm leading-tight" : "font-extrabold leading-tight"}>{pendingByCode(pending.code).es}</p>
+            {tx(lang, pending.code) && <p lang={lang} className="font-extrabold leading-tight">{tx(lang, pending.code)}</p>}
+            <p className={tx(lang, pending.code) ? "text-sm leading-tight" : "font-extrabold leading-tight"}>{pendingByCode(pending.code).es}</p>
+            <Escuchar lang={lang} k={pending.code} text={tx(lang, pending.code) ?? tx(lang, "E08")} es={pendingByCode(pending.code).es} tone="blanco" className="mt-2 text-xs" />
           </div>
           <button
             type="button"
@@ -381,11 +427,14 @@ function Hoy({ state, onAsk, onBreathe, go, nah }: { state: DemoState; onAsk: (t
 
       {canRest(state) && (
         <div className="mx-4 mt-3 rounded-3xl bg-noche p-4 text-white">
-          {nah && <p lang="nah" className="mb-1.5 text-[15px] font-extrabold leading-snug text-pretty">{NAH_TEXT.rest}</p>}
-          <p className={`leading-snug text-pretty ${nah ? "text-sm text-white/80" : "text-[15px]"}`}>{REST_PERMISSION.replace("{hora}", state.nextReport!)}</p>
-          <button type="button" onClick={onBreathe} className="mt-3 flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-bold hover:bg-white/25">
-            Respirar un momento <Flecha width={16} height={16} />
-          </button>
+          {tx(lang, "rest") && <p lang={lang} className="mb-1.5 text-[15px] font-extrabold leading-snug text-pretty">{tx(lang, "rest")}</p>}
+          <p className={`leading-snug text-pretty ${tx(lang, "rest") ? "text-sm text-white/80" : "text-[15px]"}`}>{restEs}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Escuchar lang={lang} k="rest" text={tx(lang, "rest")} es={restEs} tone="noche" />
+            <button type="button" onClick={onBreathe} className="flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-bold hover:bg-white/25">
+              Respirar un momento <Flecha width={16} height={16} />
+            </button>
+          </div>
         </div>
       )}
 
@@ -395,8 +444,8 @@ function Hoy({ state, onAsk, onBreathe, go, nah }: { state: DemoState; onAsk: (t
       </div>
 
       <h3 className="mx-5 mt-6 text-lg font-extrabold">
-        {nah ? <span lang="nah">{NAH_TEXT.path}</span> : "El camino de su paciente"}
-        {nah && <span className="block text-sm font-bold text-tinta-suave">El camino de su paciente</span>}
+        {tx(lang, "path") ? <span lang={lang}>{tx(lang, "path")}</span> : "El camino de su paciente"}
+        {tx(lang, "path") && <span className="block text-sm font-bold text-tinta-suave">El camino de su paciente</span>}
       </h3>
       <ol className="relative mx-4 mt-3 flex flex-col gap-3">
         <span aria-hidden className="absolute bottom-6 left-[11px] top-6 border-l-2 border-dashed border-linea" />
@@ -428,13 +477,14 @@ function Hoy({ state, onAsk, onBreathe, go, nah }: { state: DemoState; onAsk: (t
 }
 
 /* ---------- Mensajes ---------- */
-function Burbuja({ m, nah }: { m: PhoneMessage; nah: boolean }) {
-  const showNah = nah && m.nah && !m.nah.startsWith("[");
+function Burbuja({ m, lang }: { m: PhoneMessage; lang: string }) {
+  const own = tx(lang, m.tkey);
+  const showNah = !!own;
   if (m.kind === "sms") {
     return (
       <li className="entra self-center max-w-[88%] rounded-2xl bg-tinta/85 px-4 py-2 text-center text-sm text-white">
         <span className="block text-[11px] font-extrabold opacity-80">Mensaje SMS</span>
-        {showNah && <span lang="nah" className="block font-bold">{m.nah}</span>}
+        {showNah && <span lang={lang} className="block font-bold">{own}</span>}
         <span className={showNah ? "mt-0.5 block text-xs opacity-80" : ""}>{m.text.replace(/^SMS:\s*/, "")}</span>
       </li>
     );
@@ -449,28 +499,19 @@ function Burbuja({ m, nah }: { m: PhoneMessage; nah: boolean }) {
       {m.critical && !mine && <span className="mb-0.5 block text-xs font-extrabold text-cafe">Le necesitamos</span>}
       {showNah ? (
         <>
-          <p lang="nah" className="font-bold text-pretty">{m.nah}</p>
+          <p lang={lang} className="font-bold text-pretty">{own}</p>
           <p className={`mt-1 text-[13px] leading-snug ${mine ? "text-white/80" : "text-tinta-suave"}`}>{m.text}</p>
         </>
       ) : (
         <p className="text-pretty">{m.text}</p>
       )}
-      {!mine && m.nah && !m.nah.startsWith("[") && (
-        <button
-          type="button"
-          onClick={() => playAudio(m.audio, m.nah)}
-          aria-label="Escuchar el aviso en náhuatl"
-          className="mt-2 flex items-center gap-2 rounded-full bg-azul-claro py-1.5 pl-2 pr-3 text-xs font-bold text-azul"
-        >
-          <Play width={14} height={14} /> {NAH_TEXT.listen}
-        </button>
-      )}
+      {!mine && <Escuchar lang={lang} k={m.tkey} text={own} es={m.text} className="mt-2 text-xs" />}
       <p className={`mt-1 text-right text-[11px] tabular ${mine ? "text-white/75" : "text-tinta-suave"}`}>{fmtTime(m.at)}</p>
     </li>
   );
 }
 
-function Mensajes({ state, onAsk, nah }: { state: DemoState; onAsk: (t: string) => void; nah: boolean }) {
+function Mensajes({ state, onAsk, lang }: { state: DemoState; onAsk: (t: string) => void; lang: string }) {
   const [text, setText] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -496,7 +537,7 @@ function Mensajes({ state, onAsk, nah }: { state: DemoState; onAsk: (t: string) 
       <div className="app-scroll min-h-0 flex-1 overflow-y-auto bg-fondo px-3 py-4">
         <ol aria-live="polite" className="flex flex-col gap-2.5">
           {state.messages.map((m) => (
-            <Burbuja key={m.id} m={m} nah={nah} />
+            <Burbuja key={m.id} m={m} lang={lang} />
           ))}
           {state.agentTyping && <li className="entra self-start rounded-3xl bg-white px-4 py-3 text-sm text-tinta-suave">Escribiendo…</li>}
         </ol>
@@ -537,13 +578,16 @@ function Mensajes({ state, onAsk, nah }: { state: DemoState; onAsk: (t: string) 
 }
 
 /* ---------- Cerca ---------- */
-function Cerca({ onAsk, go }: { onAsk: (t: string) => void; go: (t: Tab) => void }) {
+function Cerca({ onAsk, go, lang }: { onAsk: (t: string) => void; go: (t: Tab) => void; lang: string }) {
   const [sel, setSel] = useState<string | null>("alb-1");
+  const cercaEs = `Cerca del hospital: ${PLACES.map((p) => `${p.name.replace(" (ejemplo)", "")}, ${p.walk.replace("·", ",")}`).join(". ")}.`;
   return (
     <div key="cerca" className="entra px-4 pb-6">
       <header className="px-1 pb-3 pt-2">
         <h2 className="text-2xl font-extrabold">Cerca del hospital</h2>
+        {tx(lang, "cerca") && <p lang={lang} className="mt-1 font-bold leading-snug text-pretty">{tx(lang, "cerca")}</p>}
         <p className="text-sm text-tinta-suave">Lugares revisados por voluntarias. Datos de ejemplo.</p>
+        <Escuchar lang={lang} k="cerca" text={tx(lang, "cerca")} es={cercaEs} className="mt-2" />
       </header>
       <MapaCerca selected={sel} onSelect={setSel} />
       <ul className="mt-3 flex flex-col gap-3">
@@ -555,7 +599,21 @@ function Cerca({ onAsk, go }: { onAsk: (t: string) => void; go: (t: Tab) => void
           >
             <Mini kind={p.type} className="size-20 shrink-0" />
             <div className="min-w-0 flex-1">
-              <p className="font-extrabold leading-tight">{p.name}</p>
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-extrabold leading-tight">{p.name}</p>
+                <button
+                  type="button"
+                  aria-label={`Escuchar: ${p.name}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSel(p.id);
+                    speak(`${p.name.replace(" (ejemplo)", "")}. ${p.walk.replace("·", ",")}. ${p.hours}. ${p.cost === "—" ? "" : p.cost}`);
+                  }}
+                  className="grid size-8 shrink-0 place-items-center rounded-full bg-azul-claro text-azul"
+                >
+                  <Play width={13} height={13} />
+                </button>
+              </div>
               <p className="mt-0.5 text-sm text-tinta-suave">{p.walk}</p>
               <p className="text-sm text-tinta-suave">
                 {p.hours}. {p.cost}
@@ -584,7 +642,10 @@ function Cerca({ onAsk, go }: { onAsk: (t: string) => void; go: (t: Tab) => void
 }
 
 /* ---------- Ayuda ---------- */
-function AyudaView({ onAsk, go }: { onAsk: (t: string) => void; go: (t: Tab) => void }) {
+function AyudaView({ onAsk, go, lang }: { onAsk: (t: string) => void; go: (t: Tab) => void; lang: string }) {
+  const L = lengua(lang);
+  const native = lang !== "es" && lang !== "otra";
+  const ayudaEs = "Si quiere hablar con una persona que hable su lengua, toque el botón amarillo.";
   const ask = (q: string) => {
     onAsk(q);
     go("mensajes");
@@ -593,12 +654,14 @@ function AyudaView({ onAsk, go }: { onAsk: (t: string) => void; go: (t: Tab) => 
     <div key="ayuda" className="entra px-4 pb-6">
       <header className="px-1 pb-3 pt-2">
         <h2 className="text-2xl font-extrabold">Ayuda</h2>
+        {tx(lang, "ayuda") && <p lang={lang} className="mt-1 font-bold leading-snug text-pretty">{tx(lang, "ayuda")}</p>}
+        <Escuchar lang={lang} k="ayuda" text={tx(lang, "ayuda")} es={ayudaEs} className="mt-2" />
       </header>
       <button type="button" onClick={() => ask("Quiero hablar con una persona")} className="flex w-full items-center gap-4 rounded-3xl bg-maiz p-4 text-left">
         <Mini kind="persona" className="size-16 shrink-0" />
         <span>
           <span className="block text-lg font-extrabold leading-tight">Hablar con una persona</span>
-          <span className="text-sm">Una voluntaria que habla español y náhuatl</span>
+          <span className="text-sm">{native ? `Una voluntaria que habla español y ${L.name}` : "Una voluntaria o un intérprete"}</span>
         </span>
       </button>
       <ul className="mt-3 flex flex-col gap-2">
@@ -623,11 +686,15 @@ function AyudaView({ onAsk, go }: { onAsk: (t: string) => void; go: (t: Tab) => 
 }
 
 /* ---------- Momentos a pantalla completa ---------- */
-function AvisoUrgente({ state, onConfirm, nah }: { state: DemoState; onConfirm: () => void; nah: boolean }) {
-  // Al llegar el aviso urgente, el celular lo dice en voz alta una vez.
+function AvisoUrgente({ state, onConfirm, lang }: { state: DemoState; onConfirm: () => void; lang: string }) {
+  const own = tx(lang, "E07");
+  const es = statusByCode("E07").es;
+  const title = tx(lang, "urgentTitle");
+  const nah = !!title;
+  // Al llegar el aviso urgente, el celular lo dice en voz alta una vez, en la lengua elegida.
   useEffect(() => {
-    if (nah) playAudio(undefined, NAH_TEXT.E07);
-  }, [nah]);
+    playAudio(own ? audioOf(lang, "E07") : undefined, own ?? es);
+  }, [lang, own, es]);
   return (
     <div role="alertdialog" aria-label="Aviso urgente" className="sube absolute inset-0 z-30 flex flex-col bg-naranja-claro">
       <div className="relative h-[42%] shrink-0 overflow-hidden">
@@ -638,48 +705,44 @@ function AvisoUrgente({ state, onConfirm, nah }: { state: DemoState; onConfirm: 
       </div>
       <div className="flex flex-1 flex-col px-6 pb-6">
         <p className="text-center text-sm font-extrabold text-cafe">Aviso del hospital</p>
-        {nah && <p lang="nah" className="mt-1 text-center text-[26px] font-extrabold leading-tight text-balance">{NAH_TEXT.urgentTitle}</p>}
+        {title && <p lang={lang} className="mt-1 text-center text-[26px] font-extrabold leading-tight text-balance">{title}</p>}
         <h2 className={`mt-1 text-center font-extrabold leading-tight text-balance ${nah ? "text-lg text-tinta-suave" : "text-[26px]"}`}>El médico quiere hablar con usted</h2>
         <p className="mt-2 text-center text-[15px] text-tinta-suave">Por favor regrese a informes en los próximos 20 minutos.</p>
-        <button
-          type="button"
-          onClick={() => playAudio("/audio/E07.mp3", NAH_TEXT.E07)}
-          className="mx-auto mt-4 flex items-center gap-2 rounded-full bg-white py-2 pl-3 pr-4 text-sm font-bold text-azul"
-        >
-          <Play width={14} height={14} /> Escuchar en náhuatl
-        </button>
+        <Escuchar lang={lang} k="E07" text={own} es={es} tone="blanco" className="mx-auto mt-4" />
         <p className="mt-auto pb-3 text-center text-xs text-tinta-suave">
           {state.call.state === "sms_sent" ? "También le enviamos un SMS. Si no responde, le llamaremos." : "Si no responde, le avisaremos por SMS y llamada."}
         </p>
-        <Primario onClick={onConfirm}>{nah ? `${NAH_TEXT.coming}: voy en camino` : "Voy en camino"}</Primario>
+        <Primario onClick={onConfirm}>{tx(lang, "coming") ? `${tx(lang, "coming")}: voy en camino` : "Voy en camino"}</Primario>
       </div>
     </div>
   );
 }
 
-function Llamada({ onConfirm, nah }: { onConfirm: () => void; nah: boolean }) {
+function Llamada({ onConfirm, lang }: { onConfirm: () => void; lang: string }) {
   const ref = useRef<HTMLButtonElement>(null);
+  const said = tx(lang, "E07") ?? statusByCode("E07").es;
+  const title = tx(lang, "urgentTitle");
   useEffect(() => {
     ref.current?.focus();
-    // La llamada "habla": lee el aviso en náhuatl dos veces, como un audio de llamada.
-    playAudio(undefined, `${NAH_TEXT.E07} ... ${NAH_TEXT.E07}`);
+    // La llamada "habla": lee el aviso dos veces en la lengua elegida, como un audio de llamada.
+    playAudio(undefined, `${said} ... ${said}`);
     return () => {
       if ("speechSynthesis" in window) window.speechSynthesis.cancel();
     };
-  }, []);
+  }, [said]);
   return (
     <div role="dialog" aria-modal="true" aria-label="Llamada entrante" className="entra absolute inset-0 z-40 flex flex-col items-center justify-between bg-noche px-8 py-16 text-white">
       <div className="text-center">
         <p className="text-sm opacity-75">Llamada entrante</p>
         <p className="mt-2 text-4xl font-extrabold">{SERVICE_NAME}</p>
-        {nah && <p lang="nah" className="mt-3 text-lg font-bold text-pretty">“{NAH_TEXT.urgentTitle}”</p>}
-        <p className="mt-2 text-base opacity-80 text-pretty">Audio en náhuatl: el médico quiere hablar con usted.</p>
+        {title && <p lang={lang} className="mt-3 text-lg font-bold text-pretty">“{title}”</p>}
+        <p className="mt-2 text-base opacity-80 text-pretty">Audio en {tx(lang, "E07") ? lengua(lang).name : "español"}: el médico quiere hablar con usted.</p>
       </div>
       <span className="grid size-28 place-items-center rounded-full bg-white/10">
         <Telefono width={48} height={48} className="timbre" />
       </span>
       <button ref={ref} type="button" onClick={onConfirm} className="w-full rounded-full bg-jade py-4 text-lg font-extrabold hover:bg-jade-oscuro">
-        {nah ? `Contestar: ${NAH_TEXT.coming}` : "Contestar: voy en camino"}
+        {tx(lang, "coming") ? `Contestar: ${tx(lang, "coming")}` : "Contestar: voy en camino"}
       </button>
     </div>
   );
@@ -726,7 +789,6 @@ function Respirar({ onClose }: { onClose: () => void }) {
 export function PainaniApp({ state, linked, onLinked, onAsk, onConfirm, fullscreen = false }: Props) {
   const [tab, setTab] = useState<Tab>("hoy");
   const [lang, setLang] = useState("nah");
-  const nah = lang === "nah";
   const [breathing, setBreathing] = useState(false);
   const [banner, setBanner] = useState<PhoneMessage | null>(null);
   const [seen, setSeen] = useState(0);
@@ -793,10 +855,10 @@ export function PainaniApp({ state, linked, onLinked, onAsk, onConfirm, fullscre
       ) : (
         <>
           <main className="app-scroll relative min-h-0 flex-1 overflow-y-auto">
-            {tab === "hoy" && <Hoy state={state} onAsk={onAsk} onBreathe={() => setBreathing(true)} go={setTab} nah={nah} />}
-            {tab === "mensajes" && <Mensajes state={state} onAsk={onAsk} nah={nah} />}
-            {tab === "cerca" && <Cerca onAsk={onAsk} go={setTab} />}
-            {tab === "ayuda" && <AyudaView onAsk={onAsk} go={setTab} />}
+            {tab === "hoy" && <Hoy state={state} onAsk={onAsk} onBreathe={() => setBreathing(true)} go={setTab} lang={lang} />}
+            {tab === "mensajes" && <Mensajes state={state} onAsk={onAsk} lang={lang} />}
+            {tab === "cerca" && <Cerca onAsk={onAsk} go={setTab} lang={lang} />}
+            {tab === "ayuda" && <AyudaView onAsk={onAsk} go={setTab} lang={lang} />}
           </main>
 
           {state.call.state === "coming" && tab === "hoy" && (
@@ -843,16 +905,16 @@ export function PainaniApp({ state, linked, onLinked, onAsk, onConfirm, fullscre
                   {SERVICE_NAME}
                   <span className="font-bold text-tinta-suave">ahora</span>
                 </span>
-                <span lang={nah && banner.nah && !banner.nah.startsWith("[") ? "nah" : undefined} className="line-clamp-2 text-sm font-bold leading-snug">
-                  {nah && banner.nah && !banner.nah.startsWith("[") ? banner.nah : banner.text}
+                <span lang={tx(lang, banner.tkey) ? lang : undefined} className="line-clamp-2 text-sm font-bold leading-snug">
+                  {tx(lang, banner.tkey) ?? banner.text}
                 </span>
-                {nah && banner.nah && !banner.nah.startsWith("[") && <span className="line-clamp-1 text-xs text-tinta-suave">{banner.text}</span>}
+                {tx(lang, banner.tkey) && <span className="line-clamp-1 text-xs text-tinta-suave">{banner.text}</span>}
               </span>
             </button>
           )}
 
-          {urgent && <AvisoUrgente state={state} onConfirm={onConfirm} nah={nah} />}
-          {state.call.state === "calling" && <Llamada onConfirm={onConfirm} nah={nah} />}
+          {urgent && <AvisoUrgente state={state} onConfirm={onConfirm} lang={lang} />}
+          {state.call.state === "calling" && <Llamada onConfirm={onConfirm} lang={lang} />}
           {breathing && !urgent && <Respirar onClose={() => setBreathing(false)} />}
         </>
       )}

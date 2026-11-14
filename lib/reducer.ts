@@ -22,6 +22,7 @@ export interface PhoneMessage {
   kind: MessageKind;
   text: string;
   nah?: string; // texto validado en náhuatl (o marcador pendiente)
+  tkey?: string; // clave del texto en data/lenguas.ts, para mostrarlo en la lengua elegida
   audio?: string; // audio pregrabado
   critical?: boolean;
   at: number;
@@ -75,6 +76,7 @@ function statusMessage(state: DemoState, code: StatusCode, now: number): PhoneMe
     kind: "status",
     text: s.es,
     nah: NAH_TEXT[code] ?? NAH_PENDING,
+    tkey: code,
     audio: NAH_AUDIO[code],
     critical: s.critical,
     at: now,
@@ -90,6 +92,7 @@ export function demoReducer(state: DemoState, action: DemoAction): DemoState {
         kind: "system",
         text: `Hola, ${ADMISSION.contactName}. Soy ${SERVICE_NAME}, el asistente automático de ${HOSPITAL.name}. Le avisaré aquí de cada cambio del folio ${ADMISSION.folio}. Si prefiere, puede hablar con una persona.`,
         nah: NAH_TEXT.welcome,
+        tkey: "welcome",
         at: action.now,
       });
       const first = statusMessage({ ...base, messages: [welcome] }, base.status, action.now);
@@ -120,7 +123,7 @@ export function demoReducer(state: DemoState, action: DemoAction): DemoState {
         nextReport: action.hora,
         messages: [
           ...state.messages,
-          msg(state, { from: "service", kind: "broadcast", text, nah: NAH_TEXT.B01, audio: NAH_AUDIO.B01, at: action.now }),
+          msg(state, { from: "service", kind: "broadcast", text, nah: NAH_TEXT.B01, tkey: "B01", audio: NAH_AUDIO.B01, at: action.now }),
         ],
       };
     }
@@ -138,6 +141,7 @@ export function demoReducer(state: DemoState, action: DemoAction): DemoState {
             kind: "pending",
             text: `Pendiente para usted: ${p.es}. Toque el enlace para ver los pasos.`,
             nah: action.code === "P03" ? NAH_TEXT.P03 : undefined,
+            tkey: action.code,
             critical: true,
             at: action.now,
           }),
@@ -153,7 +157,7 @@ export function demoReducer(state: DemoState, action: DemoAction): DemoState {
           call: { ...state.call, state: "sms_sent", escalated: "sms" },
           messages: [
             ...state.messages,
-            msg(state, { from: "service", kind: "sms", text: `SMS: ${statusByCode("E07").es}`, nah: NAH_TEXT.E07, critical: true, at: action.now }),
+            msg(state, { from: "service", kind: "sms", text: `SMS: ${statusByCode("E07").es}`, nah: NAH_TEXT.E07, tkey: "E07", critical: true, at: action.now }),
           ],
         };
       }
@@ -167,7 +171,7 @@ export function demoReducer(state: DemoState, action: DemoAction): DemoState {
         call: { ...state.call, state: "coming", confirmedAt: action.now },
         messages: [
           ...state.messages,
-          msg(state, { from: "family", kind: "family", text: "Voy en camino", nah: NAH_TEXT.coming, at: action.now }),
+          msg(state, { from: "family", kind: "family", text: "Voy en camino", nah: NAH_TEXT.coming, tkey: "coming", at: action.now }),
         ],
       };
     }
