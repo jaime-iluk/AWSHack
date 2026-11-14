@@ -1,12 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Atkinson_Hyperlegible } from "next/font/google";
+import { Nunito } from "next/font/google";
 import "./globals.css";
 
-// Atkinson Hyperlegible: diseñada por el Braille Institute para baja visión y lectura difícil.
-const atkinson = Atkinson_Hyperlegible({
-  variable: "--font-atkinson",
+// Nunito: terminaciones redondeadas, cálida y muy legible en pantallas pequeñas.
+const nunito = Nunito({
+  variable: "--font-nunito",
   subsets: ["latin"],
-  weight: ["400", "700"],
+  weight: ["400", "600", "700", "800"],
   display: "swap",
 });
 
@@ -16,12 +16,12 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f5f6f2",
+  themeColor: "#f6f4f0",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="es" className={`${atkinson.variable} h-full antialiased`}>
+    <html lang="es" className={`${nunito.variable} h-full antialiased`}>
       <body className="min-h-full">{children}</body>
     </html>
   );
