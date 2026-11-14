@@ -1,78 +1,261 @@
-// Ilustraciones planas de Painani, dibujadas a mano en SVG (sin personajes de terceros).
-// Paisaje: cerros, sol o luna, el hospital con su letrero "H" y el camino de huellas del mensajero.
+// Escena de Painani al estilo de un cuadro de estambre (nierika) huichol/wixárika:
+// marco lila, campos de color, sol al centro, ramas, flores, líneas onduladas y figuras
+// con doble contorno, como el estambre prensado en cera. Composición original: no copia
+// ninguna obra ni usa símbolos ceremoniales (hikuri, venado, velas). Para un producto real,
+// lo correcto es comisionar la obra a un artista wixárika.
 
 export type Mood = "calma" | "atencion" | "descanso" | "camino";
 
-const MOODS: Record<Mood, { sky: string; sun: string; far: string; near: string; road: string }> = {
-  calma: { sky: "#d8ebff", sun: "#f6be3b", far: "#8fd3b0", near: "#2e9e6e", road: "#fdf1cf" },
-  atencion: { sky: "#fde5d3", sun: "#f0843c", far: "#f6be3b", near: "#e59a2f", road: "#fff7e6" },
-  descanso: { sky: "#1c2050", sun: "#fdf1cf", far: "#2d3478", near: "#3a4296", road: "#5961b8" },
-  camino: { sky: "#dcf2e7", sun: "#f6be3b", far: "#5ba8f5", near: "#2f62e8", road: "#ffffff" },
+const Y = "#ffd23f";
+const O = "#ff7b00";
+const M = "#e4007c";
+const T = "#00c2b8";
+const B = "#2f6bff";
+const G = "#3bd16f";
+const R = "#ff2d3d";
+const W = "#ffffff";
+
+type Pal = {
+  border: string;
+  fields: [string, string, string, string]; // arriba-izq, arriba-der, abajo-izq, abajo-der
+  center: string;
+  runner: string;
 };
 
-function Huellitas({ color, points }: { color: string; points: [number, number, number][] }) {
+const MOODS: Record<Mood, Pal> = {
+  calma: { border: "#c6a6ff", fields: ["#12948c", "#4a0d22", "#1b2a8f", "#8a6ae0"], center: "#6b1430", runner: R },
+  atencion: { border: "#ffb0c8", fields: ["#b3122e", "#4a0a1e", "#5b0f2a", "#d9465a"], center: "#7a0f25", runner: B },
+  descanso: { border: "#8f8cff", fields: ["#0f1d5c", "#150b33", "#0b0f2e", "#2b2a7a"], center: "#1a1450", runner: M },
+  camino: { border: "#9fe8c9", fields: ["#0f7a5c", "#3a1a0f", "#0b3d33", "#1f9e7a"], center: "#5a2410", runner: R },
+};
+
+// Un trazo "de estambre": línea gruesa de un color con otra más delgada encima.
+function Hilo({ d, a, b, w = 6 }: { d: string; a: string; b: string; w?: number }) {
   return (
-    <g fill={color}>
-      {points.map(([x, y, r], i) => (
-        <ellipse key={i} cx={x} cy={y} rx={3.2} ry={5} transform={`rotate(${r} ${x} ${y})`} />
+    <g fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <path d={d} stroke={a} strokeWidth={w} />
+      <path d={d} stroke={b} strokeWidth={w * 0.42} />
+    </g>
+  );
+}
+
+function Estrella({ x, y, c, s = 5 }: { x: number; y: number; c: string; s?: number }) {
+  return (
+    <g stroke={c} strokeWidth={1.6} strokeLinecap="round">
+      {[0, 45, 90, 135].map((r) => (
+        <line key={r} x1={x - s} y1={y} x2={x + s} y2={y} transform={`rotate(${r} ${x} ${y})`} />
+      ))}
+      <circle cx={x} cy={y} r={1.4} fill={W} stroke="none" />
+    </g>
+  );
+}
+
+function Flor({ x, y, a, b }: { x: number; y: number; a: string; b: string }) {
+  return (
+    <g>
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <ellipse key={i} cx={x} cy={y - 6} rx={3} ry={5.5} fill={a} stroke={Y} strokeWidth={0.8} transform={`rotate(${i * 60} ${x} ${y})`} />
+      ))}
+      <circle cx={x} cy={y} r={3.4} fill={b} />
+      <circle cx={x} cy={y} r={1.3} fill={W} />
+    </g>
+  );
+}
+
+// Sol al centro: rayos finos alternados, anillos concéntricos y cara sencilla.
+function Sol({ cx, cy, night }: { cx: number; cy: number; night: boolean }) {
+  if (night) {
+    return (
+      <g>
+        {Array.from({ length: 24 }).map((_, i) => {
+          const a = (i / 24) * Math.PI * 2;
+          return <circle key={i} cx={cx + Math.cos(a) * 30} cy={cy + Math.sin(a) * 30} r={1.3} fill={i % 2 ? Y : W} />;
+        })}
+        <circle cx={cx} cy={cy} r={20} fill={Y} stroke={W} strokeWidth={3} />
+        <circle cx={cx + 8} cy={cy - 5} r={17} fill="#1a1450" />
+      </g>
+    );
+  }
+  return (
+    <g>
+      {Array.from({ length: 32 }).map((_, i) => {
+        const a = (i / 32) * Math.PI * 2;
+        const r2 = i % 2 ? 34 : 39;
+        return (
+          <line
+            key={i}
+            x1={cx + Math.cos(a) * 22}
+            y1={cy + Math.sin(a) * 22}
+            x2={cx + Math.cos(a) * r2}
+            y2={cy + Math.sin(a) * r2}
+            stroke={i % 2 ? O : Y}
+            strokeWidth={2.4}
+            strokeLinecap="round"
+          />
+        );
+      })}
+      <circle cx={cx} cy={cy} r={20} fill={O} stroke={B} strokeWidth={2.4} />
+      <circle cx={cx} cy={cy} r={14} fill={Y} stroke={R} strokeWidth={2} />
+      <circle cx={cx - 4.5} cy={cy - 2} r={1.6} fill={R} />
+      <circle cx={cx + 4.5} cy={cy - 2} r={1.6} fill={R} />
+      <path d={`M${cx - 4} ${cy + 4} Q${cx} ${cy + 7.5} ${cx + 4} ${cy + 4}`} stroke={R} strokeWidth={1.6} fill="none" strokeLinecap="round" />
+    </g>
+  );
+}
+
+// Rama con hojas a cada lado del sol.
+function Rama({ cx, cy, side }: { cx: number; cy: number; side: 1 | -1 }) {
+  const pts = Array.from({ length: 7 }).map((_, i) => {
+    const t = i / 6;
+    return [cx + side * (44 + Math.sin(t * Math.PI) * 10), cy + 34 - t * 66] as const;
+  });
+  const d = "M" + pts.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join(" L");
+  return (
+    <g>
+      <Hilo d={d} a={G} b={Y} w={3.6} />
+      {pts.slice(1).map(([x, y], i) => (
+        <g key={i}>
+          <ellipse cx={x + side * 6} cy={y - 2} rx={5} ry={2.2} fill={G} stroke={Y} strokeWidth={0.8} transform={`rotate(${side * -30} ${x + side * 6} ${y - 2})`} />
+          <ellipse cx={x - side * 6} cy={y - 2} rx={5} ry={2.2} fill={G} stroke={Y} strokeWidth={0.8} transform={`rotate(${side * 30} ${x - side * 6} ${y - 2})`} />
+        </g>
       ))}
     </g>
   );
 }
 
+// Roseta de rayos (abajo a la izquierda).
+function Roseta({ x, y }: { x: number; y: number }) {
+  return (
+    <g>
+      {Array.from({ length: 20 }).map((_, i) => {
+        const a = (i / 20) * Math.PI * 2;
+        return (
+          <line key={i} x1={x + Math.cos(a) * 15} y1={y + Math.sin(a) * 15} x2={x + Math.cos(a) * 24} y2={y + Math.sin(a) * 24} stroke={i % 2 ? Y : O} strokeWidth={2} strokeLinecap="round" />
+        );
+      })}
+      <circle cx={x} cy={y} r={13} fill={T} stroke={O} strokeWidth={2} />
+      {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+        <ellipse key={i} cx={x} cy={y - 6} rx={2} ry={5} fill={B} transform={`rotate(${i * 45} ${x} ${y})`} />
+      ))}
+      <circle cx={x} cy={y} r={2.6} fill={Y} />
+    </g>
+  );
+}
+
+// El painani: mensajero corriendo, figura de doble contorno.
+function Mensajero({ x, y, c }: { x: number; y: number; c: string }) {
+  const limbs = [
+    `M${x - 2} ${y + 6} L${x - 8} ${y + 26}`, // torso
+    `M${x - 3} ${y + 10} L${x + 8} ${y + 14} L${x + 16} ${y + 8}`, // brazo adelante
+    `M${x - 3} ${y + 10} L${x - 14} ${y + 16} L${x - 20} ${y + 12}`, // brazo atrás
+    `M${x - 8} ${y + 26} L${x + 4} ${y + 34} L${x + 6} ${y + 46}`, // pierna adelante
+    `M${x - 8} ${y + 26} L${x - 18} ${y + 36} L${x - 28} ${y + 36}`, // pierna atrás
+  ];
+  return (
+    <g>
+      {limbs.map((d, i) => (
+        <path key={`a${i}`} d={d} stroke={Y} strokeWidth={7} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      ))}
+      {limbs.map((d, i) => (
+        <path key={`b${i}`} d={d} stroke={c} strokeWidth={3.6} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      ))}
+      <circle cx={x} cy={y} r={6} fill={c} stroke={Y} strokeWidth={2} />
+      <circle cx={x + 2} cy={y - 1} r={1.2} fill={W} />
+      {/* el mensaje que lleva */}
+      <rect x={x + 14} y={y + 2} width={8} height={6} rx={1} fill={W} stroke={O} strokeWidth={1.2} />
+    </g>
+  );
+}
+
+const wave = (x: number, y: number, n: number, h = 4) => `M${x} ${y}` + Array.from({ length: n }).map(() => ` q4 ${-h} 8 0 t8 0`).join("");
+
 export function Escena({ mood = "calma", className }: { mood?: Mood; className?: string }) {
   const c = MOODS[mood];
+  const night = mood === "descanso";
+  const [tl, tr, bl, br] = c.fields;
+  const cx = 180;
+  const cy = 88;
+  const diamond = `M${cx} 6 L${cx - 112} ${cy} L${cx} 174 L${cx + 112} ${cy} Z`;
+  const inner = `M${cx} 18 L${cx - 98} ${cy} L${cx} 162 L${cx + 98} ${cy} Z`;
+  const beads = [Y, O, M, T, W, G];
   return (
     <svg viewBox="0 0 360 180" className={className} aria-hidden preserveAspectRatio="xMidYMid slice">
-      <rect width="360" height="180" fill={c.sky} />
-      {mood === "descanso" ? (
-        <g>
-          <circle cx="282" cy="52" r="24" fill={c.sun} />
-          <circle cx="294" cy="44" r="22" fill={c.sky} />
-          {[
-            [60, 30],
-            [110, 58],
-            [180, 26],
-            [220, 70],
-            [330, 96],
-            [30, 84],
-          ].map(([x, y], i) => (
-            <circle key={i} cx={x} cy={y} r={i % 2 ? 1.6 : 2.4} fill="#fdf1cf" />
-          ))}
+      {/* campos de color */}
+      <rect x="0" y="0" width="180" height="90" fill={tl} />
+      <rect x="180" y="0" width="180" height="90" fill={tr} />
+      <rect x="0" y="90" width="180" height="90" fill={bl} />
+      <rect x="180" y="90" width="180" height="90" fill={br} />
+
+      {/* esquina arriba-izq: líneas onduladas */}
+      {[16, 27, 38].map((y, i) => (
+        <Hilo key={y} d={wave(10, y, 4)} a={i % 2 ? O : Y} b={R} w={3.4} />
+      ))}
+      {/* esquina arriba-der: ondas verticales */}
+      {[300, 314, 328, 342].map((x, i) => (
+        <g key={x} transform={`rotate(90 ${x} 10)`}>
+          <Hilo d={wave(x, 10, 2, 3)} a={i % 2 ? Y : O} b={M} w={3} />
         </g>
-      ) : (
-        <circle cx="280" cy="58" r="30" fill={c.sun} />
-      )}
+      ))}
       <g className="flota">
-        <ellipse cx="80" cy="46" rx="30" ry="10" fill="#ffffff" opacity={mood === "descanso" ? 0.12 : 0.85} />
-        <ellipse cx="98" cy="40" rx="18" ry="11" fill="#ffffff" opacity={mood === "descanso" ? 0.12 : 0.85} />
+        <Flor x={262} y={22} a={M} b={Y} />
       </g>
-      <path d="M0 120 C60 86 120 92 180 110 C240 128 300 96 360 104 V180 H0Z" fill={c.far} />
-      {/* Hospital */}
-      <g transform="translate(230 86)">
-        <rect x="0" y="12" width="70" height="44" rx="4" fill="#ffffff" />
-        <rect x="22" y="0" width="26" height="20" rx="3" fill="#ffffff" />
-        <text x="35" y="15" textAnchor="middle" fontSize="13" fontWeight="800" fill={mood === "descanso" ? "#1c2050" : "#2f62e8"} fontFamily="system-ui">
-          H
-        </text>
-        {[8, 26, 44].map((x) => (
-          <rect key={x} x={x} y="24" width="12" height="10" rx="2" fill={mood === "descanso" ? "#fdf1cf" : c.sky} />
+      <Flor x={96} y={66} a={O} b={B} />
+
+      {/* rombo central con doble marco de estambre */}
+      <path d={diamond} fill={c.center} />
+      <Hilo d={diamond} a={Y} b={R} w={6} />
+      <Hilo d={inner} a={T} b={B} w={3} />
+
+      <Rama cx={cx} cy={cy} side={-1} />
+      <Rama cx={cx} cy={cy} side={1} />
+      <Sol cx={cx} cy={cy} night={night} />
+      <Flor x={cx} y={146} a={R} b={Y} />
+
+      {/* abajo-izq: roseta; abajo-der: el mensajero */}
+      <Roseta x={40} y={140} />
+      <Mensajero x={318} y={106} c={c.runner} />
+
+      {/* camino de huellas de chaquira, del mensajero hacia la izquierda */}
+      <g fill={W}>
+        {[
+          [282, 166, -84],
+          [258, 170, -90],
+          [234, 166, -96],
+          [126, 166, -84],
+          [102, 170, -90],
+        ].map(([x, y, r], i) => (
+          <g key={i} transform={`rotate(${r} ${x} ${y})`}>
+            <ellipse cx={x} cy={y} rx={2.8} ry={4.6} />
+            <circle cx={x - 1.7} cy={y - 6.4} r={0.95} />
+            <circle cx={x + 0.4} cy={y - 7.1} r={0.95} />
+            <circle cx={x + 2.3} cy={y - 6.3} r={0.85} />
+          </g>
         ))}
-        <rect x="29" y="40" width="12" height="16" rx="2" fill={c.near} />
       </g>
-      <path d="M0 150 C70 122 150 128 220 146 C280 160 320 140 360 136 V180 H0Z" fill={c.near} />
-      <path d="M20 180 C70 150 150 150 250 142" stroke={c.road} strokeWidth="10" fill="none" strokeLinecap="round" opacity="0.9" />
-      <Huellitas
-        color={mood === "descanso" ? "#1c2050" : c.near}
-        points={[
-          [60, 162, 60],
-          [86, 156, 70],
-          [114, 152, 76],
-          [142, 149, 82],
-          [170, 147, 84],
-          [198, 145, 86],
-        ]}
-      />
+
+      {/* estrellas y chaquiras sueltas */}
+      {[
+        [118, 18, Y],
+        [236, 40, T],
+        [24, 74, W],
+        [338, 66, Y],
+        [86, 112, O],
+        [258, 128, Y],
+        [70, 166, T],
+      ].map(([x, y, col], i) => (
+        <Estrella key={i} x={x as number} y={y as number} c={col as string} />
+      ))}
+      {Array.from({ length: 34 }).map((_, i) => {
+        const x = 8 + ((i * 53) % 344);
+        const y = 8 + ((i * 37) % 164);
+        const dx = Math.abs(x - cx) / 112 + Math.abs(y - cy) / 82;
+        if (dx < 1.08) return null; // fuera del rombo
+        return <circle key={i} cx={x} cy={y} r={i % 3 ? 1.4 : 2.1} fill={beads[i % beads.length]} />;
+      })}
+
+      {/* marco lila */}
+      <rect x="2.5" y="2.5" width="355" height="175" fill="none" stroke={c.border} strokeWidth={5} />
+      <rect x="6.5" y="6.5" width="347" height="167" fill="none" stroke="#3a2470" strokeWidth={1.4} />
     </svg>
   );
 }

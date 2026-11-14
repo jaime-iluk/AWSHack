@@ -147,3 +147,10 @@ button {
     animation: none;
   }
 }
+
+/* Mapa de Cerca: ruta a pie animada y pulso de "usted está aquí" */
+.ruta { animation: ruta 1s linear infinite; }
+@keyframes ruta { to { stroke-dashoffset: -16; } }
+.pulso { transform-box: fill-box; transform-origin: center; animation: pulso 2s ease-out infinite; }
+@keyframes pulso { from { transform: scale(0.6); opacity: 0.5; } to { transform: scale(1.8); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .ruta, .pulso { animation: none; } }

@@ -18,6 +18,7 @@ import { canRest, type DemoState, type PhoneMessage } from "@/lib/reducer";
 import { fmtElapsed, fmtTime } from "@/lib/useDemo";
 import { Ayuda, Bateria, Campana, Casa, Cerrar, Check, Enviar, Flecha, Mapa, Marca, Mensaje, Play, Señal, Telefono } from "../Icons";
 import { Escena, Mini, Nubes, type Mood } from "../Illustrations";
+import { MapaCerca } from "./MapaCerca";
 
 type Tab = "hoy" | "mensajes" | "cerca" | "ayuda";
 type Props = {
@@ -48,12 +49,19 @@ function speak(text?: string) {
 
 function playAudio(src?: string, text?: string) {
   if (!src) return speak(text);
+  // Si el mp3 aún no existe, onerror y play().catch disparan ambos: hablar solo una vez.
+  let done = false;
+  const fallback = () => {
+    if (done) return;
+    done = true;
+    speak(text);
+  };
   const a = new Audio(src);
-  a.onerror = () => speak(text);
-  a.play().catch(() => speak(text));
+  a.onerror = fallback;
+  a.play().catch(fallback);
 }
 
-function Escuchar({ text, src, className = "" }: { text: string; src?: string; className?: string }) {
+function Escuchar({ text, src, className = "", label }: { text: string; src?: string; className?: string; label?: string }) {
   return (
     <button
       type="button"
@@ -61,7 +69,12 @@ function Escuchar({ text, src, className = "" }: { text: string; src?: string; c
       aria-label="Escuchar en náhuatl"
       className={`flex w-fit items-center gap-2 rounded-full bg-azul-claro py-1.5 pl-2.5 pr-3.5 text-sm font-bold text-azul ${className}`}
     >
-      <Play width={14} height={14} /> {NAH_TEXT.listen} <span className="font-semibold opacity-75">· Escuchar</span>
+      <Play width={14} height={14} />{" "}
+      {label ?? (
+        <>
+          {NAH_TEXT.listen} <span className="font-semibold opacity-75">· Escuchar</span>
+        </>
+      )}
     </button>
   );
 }
@@ -158,6 +171,11 @@ function Bi({ main, es, nah, className = "", subClass = "" }: { main: string; es
 function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: string; setLang: (l: string) => void }) {
   const [step, setStep] = useState(0);
   const nah = lang === "nah";
+  const privacyText = nah ? NAH_TEXT.onbPrivacy : COPY_ES.priv.join(" ");
+  // Al llegar a "Antes de empezar", el aviso de privacidad se lee en voz alta en la lengua elegida.
+  useEffect(() => {
+    if (step === 2) playAudio(nah ? "/audio/privacidad.mp3" : undefined, privacyText);
+  }, [step, nah, privacyText]);
   const c = nah ? COPY_NAH : lang === "otra" ? COPY_OTRA : COPY_ES;
   const es = COPY_ES;
   const langs = [
@@ -274,7 +292,7 @@ function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: s
         <h2>
           <Bi main={c.privTitle} es={es.privTitle} nah={nah} className="text-[22px] font-extrabold leading-tight" subClass="text-base font-bold" />
         </h2>
-        {nah && <Escuchar text={NAH_TEXT.onbPrivacy} src="/audio/privacidad.mp3" className="mt-2" />}
+        <Escuchar text={privacyText} src={nah ? "/audio/privacidad.mp3" : undefined} label={nah ? undefined : "Escuchar"} className="mt-2" />
         <ul className="mt-4 flex flex-col gap-3 text-[15px] leading-snug">
           {c.priv.map((line, i) => (
             <li key={line} className="flex gap-3">
@@ -520,15 +538,21 @@ function Mensajes({ state, onAsk, nah }: { state: DemoState; onAsk: (t: string) 
 
 /* ---------- Cerca ---------- */
 function Cerca({ onAsk, go }: { onAsk: (t: string) => void; go: (t: Tab) => void }) {
+  const [sel, setSel] = useState<string | null>("alb-1");
   return (
     <div key="cerca" className="entra px-4 pb-6">
       <header className="px-1 pb-3 pt-2">
         <h2 className="text-2xl font-extrabold">Cerca del hospital</h2>
         <p className="text-sm text-tinta-suave">Lugares revisados por voluntarias. Datos de ejemplo.</p>
       </header>
-      <ul className="flex flex-col gap-3">
+      <MapaCerca selected={sel} onSelect={setSel} />
+      <ul className="mt-3 flex flex-col gap-3">
         {PLACES.map((p) => (
-          <li key={p.id} className="flex gap-3 rounded-3xl bg-white p-3 shadow-[0_2px_0_#ebe7e1]">
+          <li
+            key={p.id}
+            onClick={() => setSel(p.id === sel ? null : p.id)}
+            className={`flex cursor-pointer gap-3 rounded-3xl bg-white p-3 shadow-[0_2px_0_#ebe7e1] transition ${p.id === sel ? "ring-2 ring-azul" : ""}`}
+          >
             <Mini kind={p.type} className="size-20 shrink-0" />
             <div className="min-w-0 flex-1">
               <p className="font-extrabold leading-tight">{p.name}</p>
