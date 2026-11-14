@@ -31,11 +31,39 @@ type Props = {
 
 const STAGE_MINI = ["registro", "atencion", "procedimiento", "hospital", "salida"] as const;
 
-function playAudio(src?: string) {
-  if (!src) return;
-  new Audio(src).play().catch(() => {
-    /* audio aún no grabado */
-  });
+// Voz: si existe el audio grabado por un intérprete, se reproduce; si no, el celular lee el texto
+// en náhuatl con una voz en español de México (la ortografía del náhuatl se lee bien así).
+function speak(text?: string) {
+  if (!text || typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  const synth = window.speechSynthesis;
+  synth.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  const voices = synth.getVoices();
+  const voice = voices.find((v) => v.lang === "es-MX") ?? voices.find((v) => v.lang.startsWith("es"));
+  if (voice) u.voice = voice;
+  u.lang = voice?.lang ?? "es-MX";
+  u.rate = 0.85;
+  synth.speak(u);
+}
+
+function playAudio(src?: string, text?: string) {
+  if (!src) return speak(text);
+  const a = new Audio(src);
+  a.onerror = () => speak(text);
+  a.play().catch(() => speak(text));
+}
+
+function Escuchar({ text, src, className = "" }: { text: string; src?: string; className?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={() => playAudio(src, text)}
+      aria-label="Escuchar en náhuatl"
+      className={`flex w-fit items-center gap-2 rounded-full bg-azul-claro py-1.5 pl-2.5 pr-3.5 text-sm font-bold text-azul ${className}`}
+    >
+      <Play width={14} height={14} /> {NAH_TEXT.listen} <span className="font-semibold opacity-75">· Escuchar</span>
+    </button>
+  );
 }
 
 function useClock() {
@@ -72,9 +100,9 @@ function Primario({ children, onClick, tone = "azul" }: { children: React.ReactN
 function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: string; setLang: (l: string) => void }) {
   const [step, setStep] = useState(0);
   const langs = [
-    { id: "es", label: "Español" },
-    { id: "nah", label: "Náhuatl (mexicano)" },
-    { id: "otra", label: "Otra lengua" },
+    { id: "es", label: "Español", sub: "Caxtiltlahtolli" },
+    { id: "nah", label: "Nāhuatlahtōlli", sub: "Náhuatl (mexicano)" },
+    { id: "otra", label: "Occē tlahtōlli", sub: "Otra lengua" },
   ];
 
   if (step === 0)
@@ -87,10 +115,18 @@ function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: s
           </svg>
         </div>
         <div className="flex flex-1 flex-col px-6 pb-6">
-          <h2 className="text-center text-[22px] font-extrabold leading-tight">Le avisamos cómo va su paciente</h2>
-          <p className="mt-1 text-center text-sm text-tinta-suave">Para que no tenga que esperar en la sala.</p>
-          <p className="mt-5 text-center text-sm font-bold text-tinta-suave">¿En qué lengua le hablamos?</p>
-          <div className="mt-3 flex flex-col gap-2.5" role="radiogroup" aria-label="Lengua">
+          <div className="mb-2 flex items-center justify-center gap-2 text-azul">
+            <Marca width={30} height={30} />
+            <span translate="no" className="text-[26px] font-extrabold tracking-[-0.01em] text-tinta">
+              {SERVICE_NAME}
+            </span>
+          </div>
+          <p lang="nah" className="text-center text-[20px] font-extrabold leading-tight text-balance">{NAH_TEXT.onbTitle}</p>
+          <h2 className="mt-1 text-center text-base font-bold leading-snug text-tinta-suave">Le avisamos cómo va su paciente</h2>
+          <Escuchar text={`${NAH_TEXT.onbTitle}. ${NAH_TEXT.onbChoose}.`} className="mx-auto mt-2" />
+          <p lang="nah" className="mt-4 text-center text-base font-extrabold">{NAH_TEXT.onbChoose}</p>
+          <p className="text-center text-sm font-bold text-tinta-suave">¿En qué lengua le hablamos?</p>
+          <div className="mt-3 flex flex-col gap-2" role="radiogroup" aria-label="Lengua">
             {langs.map((l) => {
               const on = lang === l.id;
               return (
@@ -100,11 +136,14 @@ function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: s
                   role="radio"
                   aria-checked={on}
                   onClick={() => setLang(l.id)}
-                  className={`flex items-center justify-between rounded-full border-2 px-5 py-3 text-left font-bold transition-colors duration-200 ${
+                  className={`flex items-center justify-between rounded-full border-2 px-5 py-2 text-left font-bold transition-colors duration-200 ${
                     on ? "border-transparent bg-linea" : "border-linea bg-white hover:border-tinta-suave/30"
                   }`}
                 >
-                  {l.label}
+                  <span>
+                    <span className="block leading-tight">{l.label}</span>
+                    <span className="block text-xs font-semibold text-tinta-suave">{l.sub}</span>
+                  </span>
                   <span className={`grid size-6 place-items-center rounded-full ${on ? "bg-tinta text-white" : "bg-fondo"}`}>{on && <Check width={14} height={14} />}</span>
                 </button>
               );
@@ -132,7 +171,8 @@ function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: s
           </div>
         </div>
         <div className="flex flex-1 flex-col px-6 pb-6 pt-6">
-          <h2 className="text-[22px] font-extrabold leading-tight">Escriba los datos de su tarjeta</h2>
+          <p lang="nah" className="text-[20px] font-extrabold leading-tight">{NAH_TEXT.onbCard}</p>
+          <h2 className="mt-0.5 text-base font-bold leading-tight text-tinta-suave">Escriba los datos de su tarjeta</h2>
           <p className="mt-1 text-sm text-tinta-suave">Se los dieron al registrar a su paciente. También puede escanear el código.</p>
           <label className="mt-5 text-sm font-bold text-tinta-suave" htmlFor="folio">
             Folio
@@ -160,13 +200,7 @@ function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: s
       </div>
       <div className="flex flex-1 flex-col px-6 pb-6 pt-6">
         <h2 className="text-[22px] font-extrabold leading-tight">Antes de empezar</h2>
-        <button
-          type="button"
-          onClick={() => playAudio("/audio/privacidad.mp3")}
-          className="mt-2 flex w-fit items-center gap-2 rounded-full bg-azul-claro py-1.5 pl-2.5 pr-3.5 text-sm font-bold text-azul"
-        >
-          <Play width={14} height={14} /> Escuchar en náhuatl
-        </button>
+        <Escuchar text={NAH_TEXT.onbPrivacy} src="/audio/privacidad.mp3" className="mt-2" />
         <ul className="mt-4 flex flex-col gap-3 text-[15px] leading-snug">
           {[
             "Solo le avisamos lo que el hospital publica.",
@@ -331,14 +365,14 @@ function Burbuja({ m, nah }: { m: PhoneMessage; nah: boolean }) {
       ) : (
         <p className="text-pretty">{m.text}</p>
       )}
-      {m.audio && (
+      {!mine && m.nah && !m.nah.startsWith("[") && (
         <button
           type="button"
-          onClick={() => playAudio(m.audio)}
+          onClick={() => playAudio(m.audio, m.nah)}
           aria-label="Escuchar el aviso en náhuatl"
           className="mt-2 flex items-center gap-2 rounded-full bg-azul-claro py-1.5 pl-2 pr-3 text-xs font-bold text-azul"
         >
-          <Play width={14} height={14} /> Escuchar en náhuatl
+          <Play width={14} height={14} /> {NAH_TEXT.listen}
         </button>
       )}
       <p className={`mt-1 text-right text-[11px] tabular ${mine ? "text-white/75" : "text-tinta-suave"}`}>{fmtTime(m.at)}</p>
@@ -494,6 +528,10 @@ function AyudaView({ onAsk, go }: { onAsk: (t: string) => void; go: (t: Tab) => 
 
 /* ---------- Momentos a pantalla completa ---------- */
 function AvisoUrgente({ state, onConfirm, nah }: { state: DemoState; onConfirm: () => void; nah: boolean }) {
+  // Al llegar el aviso urgente, el celular lo dice en voz alta una vez.
+  useEffect(() => {
+    if (nah) playAudio(undefined, NAH_TEXT.E07);
+  }, [nah]);
   return (
     <div role="alertdialog" aria-label="Aviso urgente" className="sube absolute inset-0 z-30 flex flex-col bg-naranja-claro">
       <div className="relative h-[42%] shrink-0 overflow-hidden">
@@ -509,7 +547,7 @@ function AvisoUrgente({ state, onConfirm, nah }: { state: DemoState; onConfirm: 
         <p className="mt-2 text-center text-[15px] text-tinta-suave">Por favor regrese a informes en los próximos 20 minutos.</p>
         <button
           type="button"
-          onClick={() => playAudio("/audio/E07.mp3")}
+          onClick={() => playAudio("/audio/E07.mp3", NAH_TEXT.E07)}
           className="mx-auto mt-4 flex items-center gap-2 rounded-full bg-white py-2 pl-3 pr-4 text-sm font-bold text-azul"
         >
           <Play width={14} height={14} /> Escuchar en náhuatl
@@ -525,7 +563,14 @@ function AvisoUrgente({ state, onConfirm, nah }: { state: DemoState; onConfirm: 
 
 function Llamada({ onConfirm, nah }: { onConfirm: () => void; nah: boolean }) {
   const ref = useRef<HTMLButtonElement>(null);
-  useEffect(() => ref.current?.focus(), []);
+  useEffect(() => {
+    ref.current?.focus();
+    // La llamada "habla": lee el aviso en náhuatl dos veces, como un audio de llamada.
+    playAudio(undefined, `${NAH_TEXT.E07} ... ${NAH_TEXT.E07}`);
+    return () => {
+      if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    };
+  }, []);
   return (
     <div role="dialog" aria-modal="true" aria-label="Llamada entrante" className="entra absolute inset-0 z-40 flex flex-col items-center justify-between bg-noche px-8 py-16 text-white">
       <div className="text-center">

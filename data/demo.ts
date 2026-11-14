@@ -77,6 +77,12 @@ export const NAH_TEXT: Record<string, string> = {
   urgentTitle: "Tepahtiani quinequi mitzonnotzaz",
   hoy: "Axcan",
   path: "Ohtli tlen quitoca mococoxqui",
+  listen: "Xiccaqui",
+  onbTitle: "Timitzmachiltizqueh quenin moyetztica mococoxqui",
+  onbChoose: "Xicpehpena motlahtol",
+  onbCard: "Xicihcuilo tlen ca ipan motarjeta",
+  onbPrivacy:
+    "Zan timitzilhuizqueh tlen quitoa tepahtihcalli. Amo nican timitzilhuizqueh tlen quipia mococoxqui; yehhuatl tepahtiani mitzilhuiz. Motlahtol polihuiz ipan 30 tonalli.",
 };
 export const NAH_AUDIO: Partial<Record<StatusCode | "B01", string>> = {
   E02: "/audio/E02.mp3",
