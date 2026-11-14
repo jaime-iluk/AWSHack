@@ -6,6 +6,7 @@ import {
   ADMISSION,
   HOSPITAL,
   PLACES,
+  NAH_TEXT,
   REST_PERMISSION,
   SERVICE_NAME,
   STAGES,
@@ -25,6 +26,7 @@ type Props = {
   onLinked: () => void;
   onAsk: (t: string) => void;
   onConfirm: () => void;
+  fullscreen?: boolean; // en un celular real: sin marco ni barra de estado falsa
 };
 
 const STAGE_MINI = ["registro", "atencion", "procedimiento", "hospital", "salida"] as const;
@@ -67,9 +69,8 @@ function Primario({ children, onClick, tone = "azul" }: { children: React.ReactN
 }
 
 /* ---------- Bienvenida y vinculación (Requisito 4) ---------- */
-function Onboarding({ onLinked }: { onLinked: () => void }) {
+function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: string; setLang: (l: string) => void }) {
   const [step, setStep] = useState(0);
-  const [lang, setLang] = useState("nah");
   const langs = [
     { id: "es", label: "Español" },
     { id: "nah", label: "Náhuatl (mexicano)" },
@@ -192,7 +193,7 @@ function Onboarding({ onLinked }: { onLinked: () => void }) {
 }
 
 /* ---------- Hoy ---------- */
-function Hoy({ state, onAsk, onBreathe, go }: { state: DemoState; onAsk: (t: string) => void; onBreathe: () => void; go: (t: Tab) => void }) {
+function Hoy({ state, onAsk, onBreathe, go, nah }: { state: DemoState; onAsk: (t: string) => void; onBreathe: () => void; go: (t: Tab) => void; nah: boolean }) {
   const s = statusByCode(state.status);
   const mood = moodOf(state);
   const pending = state.pendings[0];
@@ -201,7 +202,15 @@ function Hoy({ state, onAsk, onBreathe, go }: { state: DemoState; onAsk: (t: str
   return (
     <div key="hoy" className="entra pb-6">
       <header className="flex items-center justify-between px-5 pb-3 pt-2">
-        <h2 className="text-2xl font-extrabold">Hoy</h2>
+        <h2 className="text-2xl font-extrabold">
+          {nah ? (
+            <>
+              <span lang="nah">{NAH_TEXT.hoy}</span> <span className="text-base font-bold text-tinta-suave">Hoy</span>
+            </>
+          ) : (
+            "Hoy"
+          )}
+        </h2>
         <button type="button" aria-label="Avisos" onClick={() => go("mensajes")} className="grid size-10 place-items-center rounded-full hover:bg-fondo">
           <Campana />
         </button>
@@ -213,7 +222,14 @@ function Hoy({ state, onAsk, onBreathe, go }: { state: DemoState; onAsk: (t: str
           <p className={`text-sm font-extrabold ${urgent || pending ? "text-naranja" : "text-jade-oscuro"}`}>
             {urgent ? "Le necesitamos" : state.call.state === "coming" ? "Va en camino" : `Etapa ${state.stage} de ${STAGES.length}`}
           </p>
-          <p className="mt-1 text-lg font-extrabold leading-snug text-pretty">{s.es}</p>
+          {nah && NAH_TEXT[state.status] ? (
+            <>
+              <p lang="nah" className="mt-1 text-lg font-extrabold leading-snug text-pretty">{NAH_TEXT[state.status]}</p>
+              <p className="mt-1 text-sm leading-snug text-tinta-suave text-pretty">{s.es}</p>
+            </>
+          ) : (
+            <p className="mt-1 text-lg font-extrabold leading-snug text-pretty">{s.es}</p>
+          )}
           <p className="mt-1 text-xs text-tinta-suave tabular">Último aviso del hospital: {fmtTime(state.lastChangeAt)}</p>
         </div>
       </div>
@@ -223,7 +239,8 @@ function Hoy({ state, onAsk, onBreathe, go }: { state: DemoState; onAsk: (t: str
           <Mini kind="tramite" className="size-14 shrink-0" />
           <div className="min-w-0 flex-1">
             <p className="text-xs font-extrabold text-cafe">Se necesita algo de usted</p>
-            <p className="font-extrabold leading-tight">{pendingByCode(pending.code).es}</p>
+            {nah && pending.code === "P03" && <p lang="nah" className="font-extrabold leading-tight">{NAH_TEXT.P03}</p>}
+            <p className={nah && pending.code === "P03" ? "text-sm leading-tight" : "font-extrabold leading-tight"}>{pendingByCode(pending.code).es}</p>
           </div>
           <button
             type="button"
@@ -240,7 +257,8 @@ function Hoy({ state, onAsk, onBreathe, go }: { state: DemoState; onAsk: (t: str
 
       {canRest(state) && (
         <div className="mx-4 mt-3 rounded-3xl bg-noche p-4 text-white">
-          <p className="text-[15px] leading-snug text-pretty">{REST_PERMISSION.replace("{hora}", state.nextReport!)}</p>
+          {nah && <p lang="nah" className="mb-1.5 text-[15px] font-extrabold leading-snug text-pretty">{NAH_TEXT.rest}</p>}
+          <p className={`leading-snug text-pretty ${nah ? "text-sm text-white/80" : "text-[15px]"}`}>{REST_PERMISSION.replace("{hora}", state.nextReport!)}</p>
           <button type="button" onClick={onBreathe} className="mt-3 flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-bold hover:bg-white/25">
             Respirar un momento <Flecha width={16} height={16} />
           </button>
@@ -252,7 +270,10 @@ function Hoy({ state, onAsk, onBreathe, go }: { state: DemoState; onAsk: (t: str
         <span className="text-xl font-extrabold tabular">{state.nextReport ?? "Por confirmar"}</span>
       </div>
 
-      <h3 className="mx-5 mt-6 text-lg font-extrabold">El camino de su paciente</h3>
+      <h3 className="mx-5 mt-6 text-lg font-extrabold">
+        {nah ? <span lang="nah">{NAH_TEXT.path}</span> : "El camino de su paciente"}
+        {nah && <span className="block text-sm font-bold text-tinta-suave">El camino de su paciente</span>}
+      </h3>
       <ol className="relative mx-4 mt-3 flex flex-col gap-3">
         <span aria-hidden className="absolute bottom-6 left-[11px] top-6 border-l-2 border-dashed border-linea" />
         {STAGES.map((st, i) => {
@@ -283,12 +304,14 @@ function Hoy({ state, onAsk, onBreathe, go }: { state: DemoState; onAsk: (t: str
 }
 
 /* ---------- Mensajes ---------- */
-function Burbuja({ m }: { m: PhoneMessage }) {
+function Burbuja({ m, nah }: { m: PhoneMessage; nah: boolean }) {
+  const showNah = nah && m.nah && !m.nah.startsWith("[");
   if (m.kind === "sms") {
     return (
       <li className="entra self-center max-w-[88%] rounded-2xl bg-tinta/85 px-4 py-2 text-center text-sm text-white">
         <span className="block text-[11px] font-extrabold opacity-80">Mensaje SMS</span>
-        {m.text.replace(/^SMS:\s*/, "")}
+        {showNah && <span lang="nah" className="block font-bold">{m.nah}</span>}
+        <span className={showNah ? "mt-0.5 block text-xs opacity-80" : ""}>{m.text.replace(/^SMS:\s*/, "")}</span>
       </li>
     );
   }
@@ -300,8 +323,14 @@ function Burbuja({ m }: { m: PhoneMessage }) {
       }`}
     >
       {m.critical && !mine && <span className="mb-0.5 block text-xs font-extrabold text-cafe">Le necesitamos</span>}
-      <p className="text-pretty">{m.text}</p>
-      {m.nah && <p className="mt-1 text-xs italic text-tinta-suave">{m.nah}</p>}
+      {showNah ? (
+        <>
+          <p lang="nah" className="font-bold text-pretty">{m.nah}</p>
+          <p className={`mt-1 text-[13px] leading-snug ${mine ? "text-white/80" : "text-tinta-suave"}`}>{m.text}</p>
+        </>
+      ) : (
+        <p className="text-pretty">{m.text}</p>
+      )}
       {m.audio && (
         <button
           type="button"
@@ -317,7 +346,7 @@ function Burbuja({ m }: { m: PhoneMessage }) {
   );
 }
 
-function Mensajes({ state, onAsk }: { state: DemoState; onAsk: (t: string) => void }) {
+function Mensajes({ state, onAsk, nah }: { state: DemoState; onAsk: (t: string) => void; nah: boolean }) {
   const [text, setText] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -343,7 +372,7 @@ function Mensajes({ state, onAsk }: { state: DemoState; onAsk: (t: string) => vo
       <div className="app-scroll min-h-0 flex-1 overflow-y-auto bg-fondo px-3 py-4">
         <ol aria-live="polite" className="flex flex-col gap-2.5">
           {state.messages.map((m) => (
-            <Burbuja key={m.id} m={m} />
+            <Burbuja key={m.id} m={m} nah={nah} />
           ))}
           {state.agentTyping && <li className="entra self-start rounded-3xl bg-white px-4 py-3 text-sm text-tinta-suave">Escribiendo…</li>}
         </ol>
@@ -464,7 +493,7 @@ function AyudaView({ onAsk, go }: { onAsk: (t: string) => void; go: (t: Tab) => 
 }
 
 /* ---------- Momentos a pantalla completa ---------- */
-function AvisoUrgente({ state, onConfirm }: { state: DemoState; onConfirm: () => void }) {
+function AvisoUrgente({ state, onConfirm, nah }: { state: DemoState; onConfirm: () => void; nah: boolean }) {
   return (
     <div role="alertdialog" aria-label="Aviso urgente" className="sube absolute inset-0 z-30 flex flex-col bg-naranja-claro">
       <div className="relative h-[42%] shrink-0 overflow-hidden">
@@ -475,7 +504,8 @@ function AvisoUrgente({ state, onConfirm }: { state: DemoState; onConfirm: () =>
       </div>
       <div className="flex flex-1 flex-col px-6 pb-6">
         <p className="text-center text-sm font-extrabold text-cafe">Aviso del hospital</p>
-        <h2 className="mt-1 text-center text-[26px] font-extrabold leading-tight text-balance">El médico quiere hablar con usted</h2>
+        {nah && <p lang="nah" className="mt-1 text-center text-[26px] font-extrabold leading-tight text-balance">{NAH_TEXT.urgentTitle}</p>}
+        <h2 className={`mt-1 text-center font-extrabold leading-tight text-balance ${nah ? "text-lg text-tinta-suave" : "text-[26px]"}`}>El médico quiere hablar con usted</h2>
         <p className="mt-2 text-center text-[15px] text-tinta-suave">Por favor regrese a informes en los próximos 20 minutos.</p>
         <button
           type="button"
@@ -487,13 +517,13 @@ function AvisoUrgente({ state, onConfirm }: { state: DemoState; onConfirm: () =>
         <p className="mt-auto pb-3 text-center text-xs text-tinta-suave">
           {state.call.state === "sms_sent" ? "También le enviamos un SMS. Si no responde, le llamaremos." : "Si no responde, le avisaremos por SMS y llamada."}
         </p>
-        <Primario onClick={onConfirm}>Voy en camino</Primario>
+        <Primario onClick={onConfirm}>{nah ? `${NAH_TEXT.coming}: voy en camino` : "Voy en camino"}</Primario>
       </div>
     </div>
   );
 }
 
-function Llamada({ onConfirm }: { onConfirm: () => void }) {
+function Llamada({ onConfirm, nah }: { onConfirm: () => void; nah: boolean }) {
   const ref = useRef<HTMLButtonElement>(null);
   useEffect(() => ref.current?.focus(), []);
   return (
@@ -501,13 +531,14 @@ function Llamada({ onConfirm }: { onConfirm: () => void }) {
       <div className="text-center">
         <p className="text-sm opacity-75">Llamada entrante</p>
         <p className="mt-2 text-4xl font-extrabold">{SERVICE_NAME}</p>
-        <p className="mt-3 text-base opacity-80 text-pretty">Audio en náhuatl: el médico quiere hablar con usted.</p>
+        {nah && <p lang="nah" className="mt-3 text-lg font-bold text-pretty">“{NAH_TEXT.urgentTitle}”</p>}
+        <p className="mt-2 text-base opacity-80 text-pretty">Audio en náhuatl: el médico quiere hablar con usted.</p>
       </div>
       <span className="grid size-28 place-items-center rounded-full bg-white/10">
         <Telefono width={48} height={48} className="timbre" />
       </span>
       <button ref={ref} type="button" onClick={onConfirm} className="w-full rounded-full bg-jade py-4 text-lg font-extrabold hover:bg-jade-oscuro">
-        Contestar: voy en camino
+        {nah ? `Contestar: ${NAH_TEXT.coming}` : "Contestar: voy en camino"}
       </button>
     </div>
   );
@@ -551,8 +582,10 @@ function Respirar({ onClose }: { onClose: () => void }) {
 }
 
 /* ---------- App ---------- */
-export function PainaniApp({ state, linked, onLinked, onAsk, onConfirm }: Props) {
+export function PainaniApp({ state, linked, onLinked, onAsk, onConfirm, fullscreen = false }: Props) {
   const [tab, setTab] = useState<Tab>("hoy");
+  const [lang, setLang] = useState("nah");
+  const nah = lang === "nah";
   const [breathing, setBreathing] = useState(false);
   const [banner, setBanner] = useState<PhoneMessage | null>(null);
   const [seen, setSeen] = useState(0);
@@ -597,26 +630,30 @@ export function PainaniApp({ state, linked, onLinked, onAsk, onConfirm }: Props)
   ];
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-[46px] border-[10px] border-tinta bg-white shadow-[0_30px_60px_-28px_rgba(31,35,64,0.55)]">
-      {/* Barra de estado */}
-      <div className={`relative z-50 flex items-center justify-between px-6 pb-1 pt-2.5 text-[13px] font-extrabold transition-colors duration-200 ${state.call.state === "calling" ? "bg-noche text-white" : ""}`}>
+    <div
+      className={`relative flex h-full min-h-0 flex-col overflow-hidden bg-white ${
+        fullscreen ? "pt-[env(safe-area-inset-top)]" : "rounded-[46px] border-[10px] border-tinta shadow-[0_30px_60px_-28px_rgba(31,35,64,0.55)]"
+      }`}
+    >
+      {/* Barra de estado (solo en la maqueta de escritorio) */}
+      {!fullscreen && <div className={`relative z-50 flex items-center justify-between px-6 pb-1 pt-2.5 text-[13px] font-extrabold transition-colors duration-200 ${state.call.state === "calling" ? "bg-noche text-white" : ""}`}>
         <span className="tabular">{clock}</span>
         <span className="absolute left-1/2 top-2 h-5 w-24 -translate-x-1/2 rounded-full bg-tinta" aria-hidden />
         <span className="flex items-center gap-1">
           <Señal width={16} height={16} />
           <Bateria width={20} height={20} />
         </span>
-      </div>
+      </div>}
 
       {!linked ? (
         <div className="min-h-0 flex-1">
-          <Onboarding onLinked={onLinked} />
+          <Onboarding onLinked={onLinked} lang={lang} setLang={setLang} />
         </div>
       ) : (
         <>
           <main className="app-scroll relative min-h-0 flex-1 overflow-y-auto">
-            {tab === "hoy" && <Hoy state={state} onAsk={onAsk} onBreathe={() => setBreathing(true)} go={setTab} />}
-            {tab === "mensajes" && <Mensajes state={state} onAsk={onAsk} />}
+            {tab === "hoy" && <Hoy state={state} onAsk={onAsk} onBreathe={() => setBreathing(true)} go={setTab} nah={nah} />}
+            {tab === "mensajes" && <Mensajes state={state} onAsk={onAsk} nah={nah} />}
             {tab === "cerca" && <Cerca onAsk={onAsk} go={setTab} />}
             {tab === "ayuda" && <AyudaView onAsk={onAsk} go={setTab} />}
           </main>
@@ -627,7 +664,7 @@ export function PainaniApp({ state, linked, onLinked, onAsk, onConfirm }: Props)
             </p>
           )}
 
-          <nav aria-label="Secciones" className="grid grid-cols-4 border-t border-linea bg-white px-2 pb-4 pt-2">
+          <nav aria-label="Secciones" className="grid grid-cols-4 border-t border-linea bg-white px-2 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
             {NAV.map(({ id, label, Icon }) => {
               const on = tab === id;
               return (
@@ -665,13 +702,16 @@ export function PainaniApp({ state, linked, onLinked, onAsk, onConfirm }: Props)
                   {SERVICE_NAME}
                   <span className="font-bold text-tinta-suave">ahora</span>
                 </span>
-                <span className="line-clamp-2 text-sm leading-snug">{banner.text}</span>
+                <span lang={nah && banner.nah && !banner.nah.startsWith("[") ? "nah" : undefined} className="line-clamp-2 text-sm font-bold leading-snug">
+                  {nah && banner.nah && !banner.nah.startsWith("[") ? banner.nah : banner.text}
+                </span>
+                {nah && banner.nah && !banner.nah.startsWith("[") && <span className="line-clamp-1 text-xs text-tinta-suave">{banner.text}</span>}
               </span>
             </button>
           )}
 
-          {urgent && <AvisoUrgente state={state} onConfirm={onConfirm} />}
-          {state.call.state === "calling" && <Llamada onConfirm={onConfirm} />}
+          {urgent && <AvisoUrgente state={state} onConfirm={onConfirm} nah={nah} />}
+          {state.call.state === "calling" && <Llamada onConfirm={onConfirm} nah={nah} />}
           {breathing && !urgent && <Respirar onClose={() => setBreathing(false)} />}
         </>
       )}

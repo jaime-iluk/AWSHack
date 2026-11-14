@@ -54,6 +54,30 @@ export const NEXT_REPORT_TIME = "14:00";
 // Náhuatl: NO traducir al vuelo. Hasta tener el texto validado por intérprete,
 // se muestra este marcador y se reproduce el audio pregrabado si existe.
 export const NAH_PENDING = "[Aviso en náhuatl · pendiente de validar con intérprete]";
+
+// BORRADOR en náhuatl (variante central). Hardcodeado para la demo.
+// ⚠️ Validar con un hablante/intérprete antes de presentarlo: la variante de la familia puede ser otra.
+export const NAH_TEXT: Record<string, string> = {
+  welcome: "Niltze, Rosa. Nehuatl nipainani: nimitzmachiltiz quenin moyetztica mococoxqui.",
+  E01: "Mococoxqui ye oquitlalihqueh ipan urgencias. Quichiya ma quitta tepahtiani.",
+  E02: "Ye quipalehuiah mococoxqui.",
+  E03: "Axcan quitlachiliah mococoxqui ica tlamantli.",
+  E04: "Mococoxqui ye ocalac campa quipahtiah.",
+  E05: "Mococoxqui mocehuia; quitlachiliah.",
+  E06: "Mococoxqui ye quipia itlapech ipan tepahtihcalli.",
+  E07: "Tepahtiani quinequi mitzonnotzaz. Xihualmohcuepa ompa tlanonotzah.",
+  E08: "Itlah monequi motech. Xiquitta tlen monequi.",
+  E09: "Ye hueli calaquiz ce mochan ma quitta mococoxqui.",
+  E10: "Mococoxqui oquihuicaqueh occeccan. Timitzilhuizqueh campa tiaz.",
+  E11: "Ye quichihuah inic quizaz mococoxqui.",
+  B01: "Tepahtiani mitzilhuiz quenin moyetztica ipan 14:00, ompa tlanonotzah.",
+  P03: "Monequi tlacameh tlen quitemacazqueh eztli.",
+  rest: "Axcan amo itlah monequi. Hueliz titlacuaz noso ximocehuiz. Timitznotzazqueh.",
+  coming: "Ye niauh",
+  urgentTitle: "Tepahtiani quinequi mitzonnotzaz",
+  hoy: "Axcan",
+  path: "Ohtli tlen quitoca mococoxqui",
+};
 export const NAH_AUDIO: Partial<Record<StatusCode | "B01", string>> = {
   E02: "/audio/E02.mp3",
   E07: "/audio/E07.mp3",
@@ -102,7 +126,14 @@ export const PLACES: Place[] = [
   },
 ];
 
-export const SUGGESTED_QUESTIONS = ["¿Dónde puedo dormir?", "¿Qué tiene mi esposo?"];
+export const SUGGESTED_QUESTIONS = [
+  "¿Cómo va mi paciente?",
+  "¿Dónde puedo dormir?",
+  "¿Qué tiene mi esposo?",
+  "¿Cuándo lo puedo ver?",
+  "Tengo miedo",
+  "¿Dónde cargo mi celular?",
+];
 
 // Accesos de la web de seguimiento: cada uno abre la conversación con el asistente.
 export const TRACKER_SHORTCUTS = [
