@@ -1,4 +1,4 @@
-// Datos de la demo de Sala Tranquila. Todo hardcodeado a propósito.
+// Datos de la demo de Painani (antes Sala Tranquila). Todo hardcodeado a propósito.
 // Regla de producto: solo textos del catálogo; cero información clínica.
 import catalog from "./status_catalog.json";
 
@@ -23,6 +23,8 @@ export const REST_PERMISSION = catalog.derived.rest_permission;
 
 export const statusByCode = (code: StatusCode) => STATUSES.find((s) => s.code === code)!;
 export const pendingByCode = (code: PendingCode) => PENDING_TYPES.find((p) => p.code === code)!;
+
+export const SERVICE_NAME = "Painani";
 
 export const HOSPITAL = {
   name: "Hospital General Ejemplo (IMSS-Bienestar)",
@@ -101,3 +103,10 @@ export const PLACES: Place[] = [
 ];
 
 export const SUGGESTED_QUESTIONS = ["¿Dónde puedo dormir?", "¿Qué tiene mi esposo?"];
+
+// Accesos de la web de seguimiento: cada uno abre la conversación con el asistente.
+export const TRACKER_SHORTCUTS = [
+  { id: "tramites", label: "Trámites", question: "¿Qué trámites tengo que hacer?" },
+  { id: "lugares", label: "Dónde comer o dormir", question: "¿Dónde puedo dormir?" },
+  { id: "persona", label: "Hablar con una persona", question: "Quiero hablar con una persona" },
+] as const;

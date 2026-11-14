@@ -6,6 +6,7 @@ import {
   HOSPITAL,
   NAH_AUDIO,
   NAH_PENDING,
+  SERVICE_NAME,
   pendingByCode,
   statusByCode,
   type PendingCode,
@@ -35,7 +36,7 @@ export interface DemoState {
   nextReport: string | null; // "14:00"
   pendings: { code: PendingCode; at: number }[];
   messages: PhoneMessage[];
-  call: { state: CallState; startedAt?: number; confirmedAt?: number };
+  call: { state: CallState; startedAt?: number; confirmedAt?: number; escalated?: "sms" | "call" };
   agentTyping: boolean;
 }
 
@@ -86,7 +87,7 @@ export function demoReducer(state: DemoState, action: DemoAction): DemoState {
       const welcome = msg(base, {
         from: "service",
         kind: "system",
-        text: `Hola, ${ADMISSION.contactName}. Soy el asistente automático de ${HOSPITAL.name}. Le avisaremos aquí de cada cambio del folio ${ADMISSION.folio}. Si prefiere, puede hablar con una persona.`,
+        text: `Hola, ${ADMISSION.contactName}. Soy ${SERVICE_NAME}, el asistente automático de ${HOSPITAL.name}. Le avisaré aquí de cada cambio del folio ${ADMISSION.folio}. Si prefiere, puede hablar con una persona.`,
         at: action.now,
       });
       const first = statusMessage({ ...base, messages: [welcome] }, base.status, action.now);
@@ -146,14 +147,14 @@ export function demoReducer(state: DemoState, action: DemoAction): DemoState {
       if (action.level === "sms") {
         return {
           ...state,
-          call: { ...state.call, state: "sms_sent" },
+          call: { ...state.call, state: "sms_sent", escalated: "sms" },
           messages: [
             ...state.messages,
             msg(state, { from: "service", kind: "sms", text: `SMS: ${statusByCode("E07").es}`, critical: true, at: action.now }),
           ],
         };
       }
-      return { ...state, call: { ...state.call, state: "calling" } };
+      return { ...state, call: { ...state.call, state: "calling", escalated: "call" } };
     }
 
     case "CONFIRM_COMING": {

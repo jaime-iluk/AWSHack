@@ -34,6 +34,16 @@ export function useDemo() {
     if (id === "B01") dispatch({ type: "BROADCAST_B01", hora: NEXT_REPORT_TIME, now });
     else if (id === "E08") dispatch({ type: "ADD_PENDING", code: "P03" as PendingCode, now });
     else dispatch({ type: "PUBLISH_STATUS", code: id, now });
+    // Aviso crítico: además de la simulación, intenta mandar un WhatsApp real (si hay credenciales).
+    if (id === "E07") {
+      fetch("/api/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: "E07" }),
+      }).catch(() => {
+        /* sin red: la demo sigue simulada */
+      });
+    }
   }, []);
 
   const confirmComing = useCallback(() => dispatch({ type: "CONFIRM_COMING", now: Date.now() }), []);
