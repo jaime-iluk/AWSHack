@@ -1,6 +1,6 @@
 // Agente de la familia.
-// Carril B: reemplazar el cuerpo de askAgent por un fetch a /api/agent (Bedrock)
-// y dejar fixedAnswer como respaldo si falla o si NEXT_PUBLIC_DEMO_OFFLINE=1.
+// fixedAnswer: respuestas fijas por palabra clave (respaldo).
+// askAgent: llama al agente real /api/agent (carril B) y cae a fixedAnswer si falla.
 import { HOSPITAL, PLACES, statusByCode } from "@/data/demo";
 import type { DemoState } from "@/lib/reducer";
 
@@ -31,7 +31,30 @@ export function fixedAnswer(question: string, state: DemoState): string {
   return `Soy un asistente automático de ${HOSPITAL.name}. Puedo decirle cómo va su paciente, dónde comer o dormir cerca, o comunicarle con una persona.`;
 }
 
+const AGENT_TIMEOUT_MS = 9000;
+
+// Carril B (B1): pregunta al agente real en /api/agent (Bedrock).
+// Si NEXT_PUBLIC_DEMO_OFFLINE=1, no hay red o algo falla, responde fixedAnswer: la demo nunca se queda sin respuesta.
 export async function askAgent(question: string, state: DemoState): Promise<string> {
-  await new Promise((r) => setTimeout(r, 700)); // simula que escribe
-  return fixedAnswer(question, state);
+  if (process.env.NEXT_PUBLIC_DEMO_OFFLINE === "1") {
+    await new Promise((r) => setTimeout(r, 700)); // simula que escribe
+    return fixedAnswer(question, state);
+  }
+  try {
+    const res = await fetch("/api/agent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: question,
+        state: { status: state.status, stage: state.stage, nextReport: state.nextReport, pendings: state.pendings },
+      }),
+      signal: AbortSignal.timeout(AGENT_TIMEOUT_MS),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = (await res.json()) as { reply?: unknown };
+    if (typeof data.reply !== "string" || !data.reply) throw new Error("respuesta vacía");
+    return data.reply;
+  } catch {
+    return fixedAnswer(question, state);
+  }
 }
