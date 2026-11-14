@@ -262,29 +262,55 @@ function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: s
           <p className="mt-3 text-center">
             <Bi main={c.choose} es={es.choose} nah={native} lang={lang} className="text-base font-extrabold" subClass="text-sm font-bold" />
           </p>
-          <div className="mt-2.5 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Lengua">
-            {langs.map((l) => {
+          {/* Lenguas en carrusel: deslizar elige la lengua; tocar la tarjeta la elige y la escucha */}
+          <Carrusel
+            className="-mx-6 mt-3"
+            slideClass="w-[64%]"
+            label="Lengua"
+            index={Math.max(0, langs.findIndex((l) => l.id === lang))}
+            onIndex={(i) => setLang(langs[i].id)}
+            slides={langs.map((l, i) => {
               const on = lang === l.id;
-              return (
-                <button
-                  key={l.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={on}
-                  onClick={() => pick(l.id)}
-                  className={`flex items-center justify-between gap-1 rounded-2xl border-2 px-3 py-2 text-left font-bold transition-colors duration-200 ${
-                    on ? "border-transparent bg-linea" : "border-linea bg-white hover:border-tinta-suave/30"
-                  }`}
-                >
-                  <span className="min-w-0">
-                    <span lang={l.id === "otra" ? "es" : l.id} className="block leading-tight">{l.label}</span>
-                    <span className="block text-xs font-semibold text-tinta-suave">{l.sub}</span>
-                  </span>
-                  <span className={`grid size-6 shrink-0 place-items-center rounded-full ${on ? "bg-tinta text-white" : "bg-fondo"}`}>{on && <Check width={14} height={14} />}</span>
-                </button>
-              );
+              const hello = tx(l.id, "onbTitle") ?? (l.id === "otra" ? "Una voluntaria le ayudará en su lengua" : COPY_ES.title);
+              const tones = ["bg-azul", "bg-jade", "bg-naranja", "bg-noche", "bg-cafe"];
+              return {
+                id: l.id,
+                title: `${l.label}, ${l.sub}`,
+                node: (
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => pick(l.id)}
+                    className={`relative flex h-[168px] w-full flex-col justify-between overflow-hidden rounded-[28px] p-4 text-left text-white transition-shadow duration-300 ${tones[i % tones.length]} ${
+                      on ? "shadow-[0_14px_28px_-12px_rgba(31,35,64,0.6)] ring-4 ring-maiz" : ""
+                    }`}
+                  >
+                    <span aria-hidden className="absolute -right-6 -top-6 size-24 rounded-full bg-white/10" />
+                    <span className="relative">
+                      <span lang={l.id === "otra" ? "es" : l.id} className="block text-[24px] font-extrabold leading-none">
+                        {l.label}
+                      </span>
+                      <span className="mt-1 block text-xs font-bold opacity-80">{l.sub}</span>
+                    </span>
+                    <span lang={l.id === "otra" || l.id === "es" ? "es" : l.id} className="relative line-clamp-2 text-sm font-bold leading-snug opacity-95">
+                      {hello}
+                    </span>
+                    <span className="relative flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1 text-xs font-extrabold">
+                        <Play width={12} height={12} /> {tx(l.id, "listen") ?? "Escuchar"}
+                      </span>
+                      {on && (
+                        <span className="grid size-7 place-items-center rounded-full bg-maiz text-tinta">
+                          <Check width={15} height={15} />
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                ),
+              };
             })}
-          </div>
+          />
           {c.note && <p className="mt-2 text-center text-sm font-bold text-cafe">{c.note}</p>}
           <div className="mt-auto pt-4">
             <Primario onClick={toCard}>{c.cont}</Primario>
