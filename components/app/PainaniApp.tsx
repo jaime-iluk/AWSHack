@@ -97,8 +97,69 @@ function Primario({ children, onClick, tone = "azul" }: { children: React.ReactN
 }
 
 /* ---------- Bienvenida y vinculación (Requisito 4) ---------- */
+type Copy = {
+  title: string; sub: string; choose: string; cont: string; cardTitle: string; cardSub: string;
+  folio: string; code: string; link: string; privTitle: string; priv: string[]; accept: string; decline: string; note?: string;
+};
+
+const COPY_ES: Copy = {
+  title: "Le avisamos cómo va su paciente",
+  sub: "Para que no tenga que esperar en la sala.",
+  choose: "¿En qué lengua le hablamos?",
+  cont: "Continuar",
+  cardTitle: "Escriba los datos de su tarjeta",
+  cardSub: "Se los dieron al registrar a su paciente. También puede escanear el código.",
+  folio: "Folio",
+  code: "Código de 6 números",
+  link: "Vincular mi teléfono",
+  privTitle: "Antes de empezar",
+  priv: [
+    "Solo le avisamos lo que el hospital publica.",
+    "Nunca le daremos información médica por aquí. Eso se lo dice el médico en persona.",
+    "Sus datos se borran 30 días después del alta.",
+  ],
+  accept: "Acepto",
+  decline: "No acepto",
+};
+
+// Borrador en náhuatl: validar con intérprete.
+const COPY_NAH: Copy = {
+  title: NAH_TEXT.onbTitle,
+  sub: "Amo monequi timochiaz ipan calli tlen chiyalo.",
+  choose: NAH_TEXT.onbChoose,
+  cont: "Xicontoca",
+  cardTitle: NAH_TEXT.onbCard,
+  cardSub: "Mitzmacaqueh ihcuac oquitlalihqueh mococoxqui. Noihqui hueli ticitaz in código.",
+  folio: "Folio",
+  code: "Chicuacen tlapohualli",
+  link: "Xiquilpi moteléfono",
+  privTitle: "Achtopa",
+  priv: [
+    "Zan timitzilhuizqueh tlen quitoa tepahtihcalli.",
+    "Amo nican timitzilhuizqueh tlen quipia mococoxqui; yehhuatl tepahtiani mitzilhuiz.",
+    "Motlahtol polihuiz ipan 30 tonalli.",
+  ],
+  accept: "Quemah, nicselia",
+  decline: "Amo",
+};
+
+const COPY_OTRA: Copy = { ...COPY_ES, note: "Una voluntaria le ayudará en su lengua. Mientras, le mostramos todo en español." };
+
+// Texto principal en la lengua elegida; con náhuatl, el español va debajo como apoyo.
+function Bi({ main, es, nah, className = "", subClass = "" }: { main: string; es: string; nah: boolean; className?: string; subClass?: string }) {
+  return (
+    <>
+      <span lang={nah ? "nah" : "es"} className={`block ${className}`}>{main}</span>
+      {nah && main !== es && <span className={`block text-tinta-suave ${subClass}`}>{es}</span>}
+    </>
+  );
+}
+
 function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: string; setLang: (l: string) => void }) {
   const [step, setStep] = useState(0);
+  const nah = lang === "nah";
+  const c = nah ? COPY_NAH : lang === "otra" ? COPY_OTRA : COPY_ES;
+  const es = COPY_ES;
   const langs = [
     { id: "es", label: "Español", sub: "Caxtiltlahtolli" },
     { id: "nah", label: "Nāhuatlahtōlli", sub: "Náhuatl (mexicano)" },
@@ -108,25 +169,29 @@ function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: s
   if (step === 0)
     return (
       <div key="o0" className="entra flex h-full flex-col">
-        <div className="relative h-[38%] shrink-0 overflow-hidden">
+        <div className="relative h-[24%] shrink-0 overflow-hidden">
           <Escena mood="calma" className="h-full w-full" />
           <svg viewBox="0 0 100 10" preserveAspectRatio="none" className="absolute -bottom-px left-0 h-8 w-full" aria-hidden>
             <path d="M0 10 C30 0 70 0 100 10Z" fill="#ffffff" />
           </svg>
         </div>
-        <div className="flex flex-1 flex-col px-6 pb-6">
-          <div className="mb-2 flex items-center justify-center gap-2 text-azul">
-            <Marca width={30} height={30} />
-            <span translate="no" className="text-[26px] font-extrabold tracking-[-0.01em] text-tinta">
-              {SERVICE_NAME}
-            </span>
-          </div>
-          <p lang="nah" className="text-center text-[20px] font-extrabold leading-tight text-balance">{NAH_TEXT.onbTitle}</p>
-          <h2 className="mt-1 text-center text-base font-bold leading-snug text-tinta-suave">Le avisamos cómo va su paciente</h2>
-          <Escuchar text={`${NAH_TEXT.onbTitle}. ${NAH_TEXT.onbChoose}.`} className="mx-auto mt-2" />
-          <p lang="nah" className="mt-4 text-center text-base font-extrabold">{NAH_TEXT.onbChoose}</p>
-          <p className="text-center text-sm font-bold text-tinta-suave">¿En qué lengua le hablamos?</p>
-          <div className="mt-3 flex flex-col gap-2" role="radiogroup" aria-label="Lengua">
+        <div className="relative z-10 -mt-14 flex shrink-0 flex-col items-center px-6">
+          <span className="grid size-28 place-items-center rounded-[34px] bg-azul text-white ring-[6px] ring-white">
+            <Marca width={84} height={84} />
+          </span>
+          <span translate="no" className="mt-2 text-[44px] font-extrabold leading-none tracking-[-0.02em]">
+            {SERVICE_NAME}
+          </span>
+        </div>
+        <div className="app-scroll flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-6">
+          <h2 className="mt-3 text-center">
+            <Bi main={c.title} es={es.title} nah={nah} className="text-[19px] font-extrabold leading-tight text-balance" subClass="mt-0.5 text-sm font-bold" />
+          </h2>
+          {nah && <Escuchar text={`${NAH_TEXT.onbTitle}. ${NAH_TEXT.onbChoose}.`} className="mx-auto mt-2" />}
+          <p className="mt-3 text-center">
+            <Bi main={c.choose} es={es.choose} nah={nah} className="text-base font-extrabold" subClass="text-sm font-bold" />
+          </p>
+          <div className="mt-2.5 flex flex-col gap-2" role="radiogroup" aria-label="Lengua">
             {langs.map((l) => {
               const on = lang === l.id;
               return (
@@ -149,8 +214,9 @@ function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: s
               );
             })}
           </div>
+          {c.note && <p className="mt-2 text-center text-sm font-bold text-cafe">{c.note}</p>}
           <div className="mt-auto pt-4">
-            <Primario onClick={() => setStep(1)}>Continuar</Primario>
+            <Primario onClick={() => setStep(1)}>{c.cont}</Primario>
           </div>
         </div>
       </div>
@@ -159,9 +225,11 @@ function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: s
   if (step === 1)
     return (
       <div key="o1" className="entra flex h-full flex-col">
-        <div className="grid h-[34%] shrink-0 place-items-center bg-maiz">
+        <div className="grid h-[30%] shrink-0 place-items-center bg-maiz">
           <div className="relative w-44 rotate-[-4deg] rounded-2xl bg-white p-4 shadow-[0_12px_24px_-10px_rgba(31,35,64,0.35)]">
-            <p className="text-xs font-bold text-tinta-suave">Tarjeta del hospital</p>
+            <p className="flex items-center gap-1.5 text-xs font-bold text-azul">
+              <Marca width={16} height={16} /> {SERVICE_NAME}
+            </p>
             <p className="text-2xl font-extrabold tabular">{ADMISSION.folio}</p>
             <div className="mt-2 grid grid-cols-6 gap-0.5" aria-hidden>
               {Array.from({ length: 36 }).map((_, i) => (
@@ -170,15 +238,19 @@ function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: s
             </div>
           </div>
         </div>
-        <div className="flex flex-1 flex-col px-6 pb-6 pt-6">
-          <p lang="nah" className="text-[20px] font-extrabold leading-tight">{NAH_TEXT.onbCard}</p>
-          <h2 className="mt-0.5 text-base font-bold leading-tight text-tinta-suave">Escriba los datos de su tarjeta</h2>
-          <p className="mt-1 text-sm text-tinta-suave">Se los dieron al registrar a su paciente. También puede escanear el código.</p>
+        <div className="app-scroll flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-6 pt-6">
+          <h2>
+            <Bi main={c.cardTitle} es={es.cardTitle} nah={nah} className="text-[20px] font-extrabold leading-tight" subClass="mt-0.5 text-base font-bold leading-tight" />
+          </h2>
+          <p className="mt-1 text-sm text-tinta-suave">{c.cardSub}</p>
           <label className="mt-5 text-sm font-bold text-tinta-suave" htmlFor="folio">
-            Folio
+            {c.folio}
           </label>
           <input id="folio" readOnly value={ADMISSION.folio} className="mt-1 rounded-2xl bg-fondo px-4 py-3 text-lg font-extrabold tabular outline-none" />
-          <p className="mt-4 text-sm font-bold text-tinta-suave">Código de 6 números</p>
+          <p className="mt-4 text-sm font-bold text-tinta-suave">
+            {c.code}
+            {nah && <span className="font-semibold"> ({es.code})</span>}
+          </p>
           <div className="mt-1 grid grid-cols-6 gap-2" aria-label="Código 482913">
             {"482913".split("").map((d, i) => (
               <span key={i} className="grid h-12 place-items-center rounded-xl bg-fondo text-xl font-extrabold tabular">
@@ -187,7 +259,7 @@ function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: s
             ))}
           </div>
           <div className="mt-auto pt-4">
-            <Primario onClick={() => setStep(2)}>Vincular mi teléfono</Primario>
+            <Primario onClick={() => setStep(2)}>{c.link}</Primario>
           </div>
         </div>
       </div>
@@ -195,30 +267,30 @@ function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: s
 
   return (
     <div key="o2" className="entra flex h-full flex-col">
-      <div className="h-[30%] shrink-0 overflow-hidden">
+      <div className="h-[26%] shrink-0 overflow-hidden">
         <Escena mood="camino" className="h-full w-full" />
       </div>
-      <div className="flex flex-1 flex-col px-6 pb-6 pt-6">
-        <h2 className="text-[22px] font-extrabold leading-tight">Antes de empezar</h2>
-        <Escuchar text={NAH_TEXT.onbPrivacy} src="/audio/privacidad.mp3" className="mt-2" />
+      <div className="app-scroll flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-6 pt-5">
+        <h2>
+          <Bi main={c.privTitle} es={es.privTitle} nah={nah} className="text-[22px] font-extrabold leading-tight" subClass="text-base font-bold" />
+        </h2>
+        {nah && <Escuchar text={NAH_TEXT.onbPrivacy} src="/audio/privacidad.mp3" className="mt-2" />}
         <ul className="mt-4 flex flex-col gap-3 text-[15px] leading-snug">
-          {[
-            "Solo le avisamos lo que el hospital publica.",
-            "Nunca le daremos información médica por aquí. Eso se lo dice el médico en persona.",
-            "Sus datos se borran 30 días después del alta.",
-          ].map((t) => (
-            <li key={t} className="flex gap-3">
+          {c.priv.map((line, i) => (
+            <li key={line} className="flex gap-3">
               <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-jade-claro text-jade-oscuro">
                 <Check width={14} height={14} />
               </span>
-              {t}
+              <span>
+                <Bi main={line} es={es.priv[i]} nah={nah} className={nah ? "font-bold" : ""} subClass="mt-0.5 text-[13px]" />
+              </span>
             </li>
           ))}
         </ul>
         <div className="mt-auto flex flex-col gap-2 pt-4">
-          <Primario onClick={onLinked}>Acepto</Primario>
+          <Primario onClick={onLinked}>{nah ? `${c.accept} (${es.accept})` : c.accept}</Primario>
           <button type="button" className="py-2 text-sm font-bold text-tinta-suave">
-            No acepto
+            {nah ? `${c.decline} (${es.decline})` : c.decline}
           </button>
         </div>
       </div>
