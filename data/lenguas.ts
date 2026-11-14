@@ -200,3 +200,7 @@ export const tx = (lang: string, key?: string) => (key ? lengua(lang).text[key a
 
 /** Ruta del audio grabado por intérprete (si no existe, se usa la voz del celular). */
 export const audioOf = (lang: string, key: string) => (lang === "es" || lang === "otra" ? undefined : `/audio/${lang}/${key}.mp3`);
+
+/** Audios grabados que de verdad existen en public/audio. Agregar aquí cada mp3 que suba un intérprete,
+ * p. ej. "/audio/nah/E07.mp3". Mientras esté vacía, todo se lee con la voz del celular. */
+export const AUDIO_FILES = new Set<string>([]);

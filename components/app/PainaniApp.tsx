@@ -19,7 +19,7 @@ import { fmtElapsed, fmtTime } from "@/lib/useDemo";
 import { Ayuda, Bateria, Campana, Casa, Cerrar, Check, Enviar, Flecha, Mapa, Marca, Mensaje, Play, Señal, Telefono } from "../Icons";
 import { Escena, Mini, Nubes, type Mood } from "../Illustrations";
 import { MapaCerca } from "./MapaCerca";
-import { LENGUAS, audioOf, lengua, tx } from "@/data/lenguas";
+import { AUDIO_FILES, LENGUAS, audioOf, lengua, tx } from "@/data/lenguas";
 
 type Tab = "hoy" | "mensajes" | "cerca" | "ayuda";
 type Props = {
@@ -49,7 +49,9 @@ function speak(text?: string) {
 }
 
 function playAudio(src?: string, text?: string) {
-  if (!src) return speak(text);
+  // Solo se intenta el mp3 si de verdad existe (lista en data/lenguas.ts). Si no, la voz arranca en el
+  // mismo toque: Safari en iPhone bloquea la voz si empieza después (por ejemplo, tras fallar un mp3).
+  if (!src || !AUDIO_FILES.has(src)) return speak(text);
   // Si el mp3 aún no existe, onerror y play().catch disparan ambos: hablar solo una vez.
   let done = false;
   const fallback = () => {
@@ -214,9 +216,11 @@ function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: s
   const privacyOwn = native && (tx(lang, "priv1") || tx(lang, "priv2")) ? `${c.priv[0]} ${c.priv[1]}` : undefined;
   const privacyText = privacyOwn ?? COPY_ES.priv.join(" ");
   // Al llegar a "Antes de empezar", el aviso de privacidad se lee en voz alta en la lengua elegida.
-  useEffect(() => {
-    if (step === 2) playAudio(privacyOwn ? audioOf(lang, "privacidad") : undefined, privacyText);
-  }, [step, lang, privacyOwn, privacyText]);
+  // Se dispara en el mismo toque de "Vincular": en iPhone la voz solo arranca dentro de un toque.
+  const toPrivacy = () => {
+    setStep(2);
+    playAudio(privacyOwn ? audioOf(lang, "privacidad") : undefined, privacyText);
+  };
   // Al tocar una lengua, se escucha el saludo en esa lengua: así se elige aunque no se lea.
   const pick = (id: string) => {
     setLang(id);
@@ -319,7 +323,7 @@ function Onboarding({ onLinked, lang, setLang }: { onLinked: () => void; lang: s
             ))}
           </div>
           <div className="mt-auto pt-4">
-            <Primario onClick={() => setStep(2)}>{c.link}</Primario>
+            <Primario onClick={toPrivacy}>{c.link}</Primario>
           </div>
         </div>
       </div>
@@ -785,23 +789,164 @@ function Respirar({ onClose }: { onClose: () => void }) {
   );
 }
 
+/* ---------- Asistente flotante: disponible en todas las pantallas ---------- */
+type Recognizer = { lang: string; interimResults: boolean; onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null; onend: (() => void) | null; onerror: (() => void) | null; start: () => void; stop: () => void };
+
+function useDictado(onText: (t: string) => void) {
+  const [listening, setListening] = useState(false);
+  const recRef = useRef<Recognizer | null>(null);
+  const supported =
+    typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
+  const toggle = () => {
+    if (listening) {
+      recRef.current?.stop();
+      return;
+    }
+    const w = window as unknown as Record<string, new () => Recognizer>;
+    const Ctor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
+    if (!Ctor) return;
+    const rec = new Ctor();
+    rec.lang = "es-MX";
+    rec.interimResults = false;
+    rec.onresult = (e) => onText(e.results[0][0].transcript);
+    rec.onend = () => setListening(false);
+    rec.onerror = () => setListening(false);
+    recRef.current = rec;
+    setListening(true);
+    rec.start();
+  };
+  return { supported, listening, toggle };
+}
+
+function Asistente({ state, onAsk, onClose, lang }: { state: DemoState; onAsk: (t: string) => void; onClose: () => void; lang: string }) {
+  const [text, setText] = useState("");
+  const endRef = useRef<HTMLDivElement>(null);
+  const convo = state.messages.filter((m) => m.kind === "family" || m.kind === "agent").slice(-10);
+  const send = (t: string) => {
+    if (!t.trim()) return;
+    onAsk(t);
+    setText("");
+  };
+  const dictado = useDictado((t) => send(t));
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ block: "end" });
+  }, [convo.length, state.agentTyping]);
+  const intro = "Escriba o diga su pregunta: cómo va su paciente, dónde dormir o comer, qué trámites faltan. No doy información médica; eso se lo dice el médico. Si prefiere, le paso con una persona.";
+  return (
+    <div className="absolute inset-0 z-40 flex flex-col justify-end bg-tinta/40" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Asistente de Painani"
+        onClick={(e) => e.stopPropagation()}
+        className="sube flex max-h-[82%] min-h-[60%] flex-col overflow-hidden rounded-t-[32px] bg-fondo"
+      >
+        <header className="flex items-center gap-3 bg-white px-5 pb-3 pt-4">
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-azul text-white">
+            <Marca width={26} height={26} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg font-extrabold leading-tight">Pregúntele a {SERVICE_NAME}</h2>
+            <p className="text-xs text-tinta-suave">Asistente automático. Nunca da información médica.</p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Cerrar asistente" className="grid size-10 place-items-center rounded-full hover:bg-fondo">
+            <Cerrar />
+          </button>
+        </header>
+        <div className="app-scroll min-h-0 flex-1 overflow-y-auto px-3 py-3">
+          <ol aria-live="polite" className="flex flex-col gap-2.5">
+            <li className="self-start max-w-[88%] rounded-3xl rounded-bl-lg bg-white px-4 py-3 text-[15px] leading-snug shadow-[0_2px_0_#ebe7e1]">
+              {tx(lang, "welcome") && <p lang={lang} className="mb-1 font-bold text-pretty">{tx(lang, "welcome")}</p>}
+              <p className="text-pretty">{intro}</p>
+              <Escuchar lang={lang} k="welcome" text={tx(lang, "welcome")} es={intro} className="mt-2 text-xs" />
+            </li>
+            {convo.map((m) =>
+              m.kind === "family" ? (
+                <li key={m.id} className="entra self-end max-w-[86%] rounded-3xl rounded-br-lg bg-azul px-4 py-3 text-[15px] leading-snug text-white">
+                  {m.text}
+                </li>
+              ) : (
+                <li key={m.id} className="entra self-start max-w-[88%] rounded-3xl rounded-bl-lg bg-white px-4 py-3 text-[15px] leading-snug shadow-[0_2px_0_#ebe7e1]">
+                  <p className="text-pretty">{m.text}</p>
+                  <Escuchar lang="es" es={m.text} className="mt-2 text-xs" />
+                </li>
+              ),
+            )}
+            {state.agentTyping && <li className="entra self-start rounded-3xl bg-white px-4 py-3 text-sm text-tinta-suave">Escribiendo…</li>}
+          </ol>
+          <div ref={endRef} />
+        </div>
+        <div className="app-scroll flex gap-2 overflow-x-auto px-3 pb-2">
+          {["Quiero hablar con una persona", ...SUGGESTED_QUESTIONS].map((q, i) => (
+            <button
+              key={q}
+              type="button"
+              onClick={() => send(q)}
+              className={`shrink-0 rounded-full px-3.5 py-2 text-sm font-bold shadow-[0_2px_0_#ebe7e1] ${i === 0 ? "bg-maiz text-tinta" : "bg-white text-azul"}`}
+            >
+              {q}
+            </button>
+          ))}
+        </div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            send(text);
+          }}
+          className="flex items-center gap-2 bg-white p-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]"
+        >
+          <label htmlFor="pregunta-asistente" className="sr-only">
+            Escriba su pregunta
+          </label>
+          <input
+            id="pregunta-asistente"
+            autoComplete="off"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={dictado.listening ? "Le escucho…" : "Escriba su pregunta…"}
+            className="min-w-0 flex-1 rounded-full bg-fondo px-4 py-2.5 text-[15px] placeholder:text-tinta-suave"
+          />
+          {dictado.supported && (
+            <button
+              type="button"
+              onClick={dictado.toggle}
+              aria-label={dictado.listening ? "Dejar de escuchar" : "Decir la pregunta en voz alta"}
+              aria-pressed={dictado.listening}
+              className={`grid size-11 shrink-0 place-items-center rounded-full ${dictado.listening ? "bg-naranja text-white" : "bg-azul-claro text-azul"}`}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                <rect x="9" y="3" width="6" height="11" rx="3" />
+                <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+              </svg>
+            </button>
+          )}
+          <button type="submit" aria-label="Enviar pregunta" className="grid size-11 shrink-0 place-items-center rounded-full bg-azul text-white hover:bg-azul-oscuro">
+            <Enviar />
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- App ---------- */
 export function PainaniApp({ state, linked, onLinked, onAsk, onConfirm, fullscreen = false }: Props) {
   const [tab, setTab] = useState<Tab>("hoy");
   const [lang, setLang] = useState("nah");
   const [breathing, setBreathing] = useState(false);
+  const [asking, setAsking] = useState(false);
   const [banner, setBanner] = useState<PhoneMessage | null>(null);
   const [seen, setSeen] = useState(0);
   const lastCount = useRef(state.messages.length);
   const clock = useClock();
 
   const serviceCount = useMemo(() => state.messages.filter((m) => m.from === "service").length, [state.messages]);
-  const unread = tab === "mensajes" ? 0 : Math.max(0, serviceCount - seen);
+  const unread = tab === "mensajes" || asking ? 0 : Math.max(0, serviceCount - seen);
 
   // Al estar en Mensajes, todo queda leído.
   useEffect(() => {
-    if (tab === "mensajes") setSeen(serviceCount);
-  }, [tab, serviceCount]);
+    if (tab === "mensajes" || asking) setSeen(serviceCount);
+  }, [tab, asking, serviceCount]);
 
   // Notificación tipo push cuando llega algo nuevo y no está en Mensajes.
   useEffect(() => {
@@ -809,9 +954,9 @@ export function PainaniApp({ state, linked, onLinked, onAsk, onConfirm, fullscre
     lastCount.current = state.messages.length;
     if (!linked || state.messages.length <= prev) return;
     const last = state.messages[state.messages.length - 1];
-    if (last.from !== "service" || tab === "mensajes" || last.kind === "sms") return;
+    if (last.from !== "service" || tab === "mensajes" || last.kind === "sms" || (asking && last.kind === "agent")) return;
     setBanner(last);
-  }, [state.messages, linked, tab]);
+  }, [state.messages, linked, tab, asking]);
 
   useEffect(() => {
     if (!banner) return;
@@ -822,7 +967,10 @@ export function PainaniApp({ state, linked, onLinked, onAsk, onConfirm, fullscre
   // Al confirmar o reiniciar, cerrar respiración si llega un aviso urgente.
   const urgent = state.call.state === "waiting" || state.call.state === "sms_sent";
   useEffect(() => {
-    if (urgent) setBreathing(false);
+    if (urgent) {
+      setBreathing(false);
+      setAsking(false);
+    }
   }, [urgent]);
 
   const NAV: { id: Tab; label: string; Icon: typeof Casa }[] = [
@@ -912,6 +1060,22 @@ export function PainaniApp({ state, linked, onLinked, onAsk, onConfirm, fullscre
               </span>
             </button>
           )}
+
+          {/* Botón del asistente: visible en todas las pantallas (en Mensajes ya está el chat) */}
+          {tab !== "mensajes" && !asking && !urgent && !breathing && state.call.state !== "calling" && (
+            <button
+              type="button"
+              onClick={() => setAsking(true)}
+              aria-label="Preguntar al asistente"
+              className="entra absolute bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-4 z-30 flex items-center gap-2 rounded-full bg-azul py-2.5 pl-2.5 pr-4 text-sm font-extrabold text-white shadow-[0_10px_24px_-8px_rgba(47,98,232,0.7)] hover:bg-azul-oscuro"
+            >
+              <span className="grid size-8 place-items-center rounded-full bg-white/20">
+                <Marca width={22} height={22} />
+              </span>
+              Pregúnteme
+            </button>
+          )}
+          {asking && <Asistente state={state} onAsk={onAsk} onClose={() => setAsking(false)} lang={lang} />}
 
           {urgent && <AvisoUrgente state={state} onConfirm={onConfirm} lang={lang} />}
           {state.call.state === "calling" && <Llamada onConfirm={onConfirm} lang={lang} />}
